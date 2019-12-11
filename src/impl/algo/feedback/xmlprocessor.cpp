@@ -4,12 +4,12 @@
 #include "qstring.h"
 #include "qfile.h"
 
-#define CAPACITY 40
+#define CAPACITY 4
 
 namespace A653 {
 
 void XMLProcessor::create_afdx_xml (QString fileName, ScheduleData * data, const QMap<ObjectId, CoreId> &partCore,
-                                    const QMap<ObjectId, int> &mesMaxDur){
+                                    const QMap<ObjectId, double> &mesMaxDur){
      QDomDocument doc;
      QDomProcessingInstruction instr = doc.createProcessingInstruction(
                         "xml", "version='1.0'");
@@ -91,7 +91,7 @@ void XMLProcessor::create_afdx_xml (QString fileName, ScheduleData * data, const
          dataFlow.setAttribute("period", QString::number(m->sender()->period()));
          dataFlow.setAttribute("source", QString::number(partNum.find(m->sender()->partitionId()).value()));
          dataFlow.setAttribute("dest", QString::number(partNum.find(m->receiver()->partitionId()).value()));
-         dataFlow.setAttribute("tMax", QString::number(mesMaxDur.find(m->id()).value()));
+         dataFlow.setAttribute("tMax", QString::number((int)mesMaxDur.find(m->id()).value()));
          dfs.appendChild(dataFlow);
      }
 
@@ -169,6 +169,133 @@ void XMLProcessor::get_vl_response (std::string fileName, ScheduleData * data, Q
             failedMes.append(data->messages().at(i));
         }
     }
+}
+
+
+void XMLProcessor::create_afdx_xml_triangle (QString fileName, ScheduleData * data, const QMap<ObjectId, CoreId> &partCore,
+                                    const QMap<ObjectId, double> &mesMaxDur){
+     QDomDocument doc;
+     QDomProcessingInstruction instr = doc.createProcessingInstruction(
+                        "xml", "version='1.0'");
+     doc.appendChild(instr);
+     QDomElement  domElement = doc.createElement("afdxxml");
+     domElement.setAttribute("name", "antip test project");
+     doc.appendChild(domElement);
+
+     QDomElement resources = doc.createElement("resources");
+     domElement.appendChild(resources);
+
+     int resNumber = 0;
+     int portsNumber = 0;
+     for (int i = 0; i < data->modules().size(); i++){
+         resNumber++;
+         portsNumber++;
+         QDomElement module = doc.createElement("endSystem");
+         module.setAttribute("name", QString::fromStdString("endSystem"+std::to_string(i+1)));
+         module.setAttribute("number", QString::number(resNumber));
+         module.setAttribute("ports", QString::number(portsNumber));
+         module.setAttribute("x", QString::number(10));
+         module.setAttribute("y", QString::number(10));
+         resources.appendChild(module);
+     }
+
+     for (int j = 0; j < 3; j++){
+         QDomElement sw = doc.createElement("switch");
+         sw.setAttribute("name",QString::fromStdString("switch"+std::to_string(j+1)));
+         resNumber++;
+         sw.setAttribute("number",QString::number(resNumber));
+         sw.setAttribute("x", QString::number(10));
+         sw.setAttribute("y", QString::number(10));
+         portsNumber++;
+         QString swPorts = QString::number(portsNumber);
+         for (int i = j* ceil(data->modules().size()/3); i < (j+1)* ceil(data->modules().size()/3); i++){
+             portsNumber++;
+             swPorts+=","+QString::number(portsNumber);
+         }
+         sw.setAttribute("ports", swPorts);
+         resources.appendChild(sw);
+     }
+
+     QDomNodeList switches = domElement.elementsByTagName("switch");
+
+     for(int i = 0; i < switches.size(); i++){
+         portsNumber++;
+         QString p = switches.at(i).toElement().attribute("ports")+","+QString::number(portsNumber);
+         switches.at(i).toElement().setAttribute("ports",p);
+     }
+
+     for (int i = 0; i < data->modules().size(); i++){
+         QDomElement link = doc.createElement("link");
+         link.setAttribute("capacity", CAPACITY);
+         link.setAttribute("fromType", QString::number(0));
+         link.setAttribute("toType", QString::number(0));
+         link.setAttribute("from",QString::number(i+1));
+         link.setAttribute("to",QString::number(i+1+data->modules().size()));
+         link.setAttribute("faild", QString::number(0));
+         resources.appendChild(link);
+     }
+
+     //make a triangle
+     for(int i = data->modules().size(); i < portsNumber-1; i++){
+         QDomElement link = doc.createElement("link");
+         link.setAttribute("capacity", CAPACITY);
+         link.setAttribute("fromType", QString::number(0));
+         link.setAttribute("toType", QString::number(0));
+         link.setAttribute("from",QString::number(i));
+         link.setAttribute("to",QString::number(i+1));
+         link.setAttribute("faild", QString::number(0));
+         resources.appendChild(link);
+     }
+
+     QDomElement link = doc.createElement("link");
+     link.setAttribute("capacity", CAPACITY);
+     link.setAttribute("fromType", QString::number(0));
+     link.setAttribute("toType", QString::number(0));
+     link.setAttribute("from",QString::number(portsNumber));
+     link.setAttribute("to",QString::number(data->modules().size()));
+     link.setAttribute("faild", QString::number(0));
+     resources.appendChild(link);
+
+     QMap<ObjectId, int> partNum;
+
+     for (int i = 0; i < partCore.keys().size(); i++){
+         resNumber++;
+         QDomElement part = doc.createElement("partition");
+         part.setAttribute("number", QString::number(resNumber));
+         part.setAttribute("x", QString::number(10));
+         part.setAttribute("y", QString::number(10));
+         part.setAttribute("name", QString::fromStdString("partition"+std::to_string(i+1)));
+         part.setAttribute("connectedTo", QString::number(partCore.find(partCore.keys().at(i)).value().moduleId.getId()+1));
+         resources.appendChild(part);
+         partNum.insert(partCore.keys().at(i),resNumber);
+     }
+
+     QDomElement vl = doc.createElement("virtualLinks");
+     domElement.appendChild(vl);
+
+     QDomElement dfs = doc.createElement("dataFlows");
+     domElement.appendChild(dfs);
+
+     for (int i = 0; i < data->messages().size(); i++){
+         Message * m = data->messages().at(i);
+         QDomElement dataFlow = doc.createElement("dataFlow");
+         dataFlow.setAttribute("vl", "None");
+         dataFlow.setAttribute("jMax", QString::number(0));
+         dataFlow.setAttribute("id", QString::fromStdString("Data Flow "+std::to_string(i+1)));
+         dataFlow.setAttribute("msgSize", QString::number(m->size()));
+         dataFlow.setAttribute("period", QString::number(m->sender()->period()));
+         dataFlow.setAttribute("source", QString::number(partNum.find(m->sender()->partitionId()).value()));
+         dataFlow.setAttribute("dest", QString::number(partNum.find(m->receiver()->partitionId()).value()));
+         dataFlow.setAttribute("tMax", QString::number((int)mesMaxDur.find(m->id()).value()));
+         dfs.appendChild(dataFlow);
+     }
+
+     QFile file;
+     file.setFileName(fileName);
+     if(file.open(QIODevice::WriteOnly)) {
+         QTextStream(&file) << doc.toString();
+         file.close();
+     }
 }
 
 

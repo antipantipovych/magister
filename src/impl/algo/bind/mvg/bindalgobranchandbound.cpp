@@ -587,9 +587,11 @@ double lowerBoundCounting(QList<myTreeNode> &lowerSolution, double &lowerBound,c
          lowerBound+=addLinks(lowerSolution, newOne,shed->data());
      }
      QMap <ObjectId, double> mesDur ;
-     QMultiMap<ObjectId, CoreId> parts;
+     QMultiMap<ObjectId, QSet<ObjectId>> parts;
      QMap<ObjectId, double> mesConstr;
-    if (PDCChecker::checkPDC(mesDur, lowerSolution, shed->data(), true, parts, fixedParts, mesConstr )){
+     QMap<ObjectId, double> mesMaxDur;
+     QMap<ObjectId, double> minChainMessage;
+    if (PDCChecker::checkPDC(mesDur, lowerSolution, shed->data(), true, parts, fixedParts, mesConstr, minChainMessage, mesMaxDur )){
         return lowerBound;
     }
 return 0;
@@ -1207,9 +1209,11 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
          }
          if(iter == partsToBind.length()){//достигли низа ветки --построили какое-то решение, проверим насколько оно хорошо
              QMap <ObjectId, double> mesDur ;
-             QMultiMap<ObjectId, CoreId> parts;
+             QMultiMap<ObjectId, QSet<ObjectId>> parts;
              QMap<ObjectId, double> mesConstr;
-             if((curDoubleSol>=optDoubleSol) && (PDCChecker::checkPDC(mesDur, currentBranch, shed->data(), true, parts, fixedParts, mesConstr ))) {
+             QMap<ObjectId, double> mesMaxDur;
+             QMap<ObjectId, double> minChainMessage;
+             if((curDoubleSol>=optDoubleSol) && (PDCChecker::checkPDC(mesDur, currentBranch, shed->data(), true, parts, fixedParts, mesConstr, minChainMessage, mesMaxDur))) {
                  optDoubleSol=curDoubleSol;
                  optSolution.clear();
                  foreach (myTreeNode t, currentBranch) {

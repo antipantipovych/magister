@@ -22,13 +22,15 @@ namespace A653 {
  std::string filePath = "../../saprcliA/build-sapr-console-Desktop_Qt_5_5_1_MinGW_32bit-Release/";
 
     void countMesConstr(Task* current, QList<Message*> curPathMes, double curSum,
-                        const QMap<ObjectId, CoreId>  &taskCore, QMap<ObjectId, int> &curMesConstr, ScheduleData* data){
+                        const QMap<ObjectId, CoreId>  &taskCore, QMap<ObjectId, double> &curMesConstr, ScheduleData* data,
+                        const QMap<ObjectId, double> &mesConstr, const QMap <ObjectId, double> &mesDur,
+                        QMap<ObjectId, double> &minChainMessage){
         curSum+= (double)current->duration(taskCore.find(current->id()).value().processorTypeId());
         bool isEndTask = true;
         foreach (Message* m, data->messages()){
             if (m->senderId()==current->id()){
                 curPathMes.append(m);
-                countMesConstr(m->receiver(), curPathMes, curSum, taskCore, curMesConstr, data);
+                countMesConstr(m->receiver(), curPathMes, curSum, taskCore, curMesConstr, data, mesConstr, mesDur, minChainMessage);
                 isEndTask = false;
             }
         }
@@ -38,7 +40,13 @@ namespace A653 {
             for (int i = 0; i < curPathMes.size(); i++){
                 Message* m = curPathMes.at(i);
                 if (taskCore.find(m->senderId()).value().moduleId != taskCore.find(m->receiverId()).value().moduleId){
-                    sizes += m->size();
+                    if(!mesConstr.contains(m->id())){
+                        sizes += m->size();
+                    }
+                    else {
+                        curMesConstr.insert(m->id(), mesDur.find(m->id()).value()-mesConstr.find(m->id()).value());
+                        space -= mesDur.find(m->id()).value()-mesConstr.find(m->id()).value();
+                    }
                 }
                 else{
                     space -= m->DefaultMDur;
@@ -46,7 +54,15 @@ namespace A653 {
             }
 
             for (int i = 0; i < curPathMes.size(); i++){
-                int partSpace ;
+                //we should not take into the account the Messages, which were choosen for additional constraints
+                //we know their fixed maxDuration
+
+                minChainMessage.insert(curPathMes.at(i)->id(), std::min(minChainMessage.find(curPathMes.at(i)->id()).value(),space));
+
+                if(mesConstr.contains(curPathMes.at(i)->id())){
+                   continue;
+                }
+                double partSpace ;
                 Message* m = curPathMes.at(i);
                 if (taskCore.find(m->senderId()).value().moduleId != taskCore.find(m->receiverId()).value().moduleId){
                     partSpace = ceil((double)space/sizes*(m->size()));
@@ -60,13 +76,15 @@ namespace A653 {
                 else{
                     curMesConstr.insert(m->id(), partSpace);
                 }
+
             }
         }
     }
 
-    QMap <ObjectId, int> countMesMaxDur(ScheduleData* data, const QMap<ObjectId, CoreId>  &taskCore,
-                                        const QMap<ObjectId, double> &mesConstr, const QMap <ObjectId, double> &mesDur){
-        QMap <ObjectId, int> d;
+    QMap <ObjectId, double> countMesMaxDur(ScheduleData* data, const QMap<ObjectId, CoreId>  &taskCore,
+                                        const QMap<ObjectId, double> &mesConstr, const QMap <ObjectId, double> &mesDur,
+                                        QMap<ObjectId, double> &minChainMessage){
+        QMap <ObjectId, double> d;
         QList<Message*> mes = data->messages();
         QList<Task*> tasks = data->tasks();
         QList<Task*> startTasks = data->tasks();
@@ -78,14 +96,14 @@ namespace A653 {
         foreach (Task* t, startTasks){
             QList<Message*> curPathMes;
             double sum = 0;
-            countMesConstr(t, curPathMes, sum, taskCore, d, data);
+            countMesConstr(t, curPathMes, sum, taskCore, d, data, mesConstr, mesDur, minChainMessage);
         }
 
-        foreach (Message* m, mes){
-            if(mesConstr.contains(m->id())){
-                d.find(m->id()).value()= mesDur.find(m->id()).value()-mesConstr.find(m->id()).value();
-            }
-        }
+//        foreach (Message* m, mes){
+//            if(mesConstr.contains(m->id())){
+//                d.find(m->id()).value()= mesDur.find(m->id()).value()-mesConstr.find(m->id()).value();
+//            }
+//        }
 
         return d;
     }
@@ -156,8 +174,9 @@ namespace A653 {
             QMap<ObjectId, CoreId> taskCore = PDCChecker::initTaskCore(binding, schedule->data()->tasks());
 
             //??????? ??????????? ?? ???????????? ???????????? ???????? ?????????
-            QMap<ObjectId, int> mesMaxDur;
-            mesMaxDur = countMesMaxDur(schedule->data(), taskCore, mesConstr, mesDur);
+            QMap<ObjectId, double> mesMaxDur;
+            QMap<ObjectId, double> minChainMessage;
+            mesMaxDur = countMesMaxDur(schedule->data(), taskCore, mesConstr, mesDur, minChainMessage);
 
             //?????? ??????????? ??????
             XMLProcessor::create_afdx_xml(QString::fromStdString(filename), schedule->data(), solution, mesMaxDur);
@@ -198,8 +217,8 @@ namespace A653 {
             }
             else{
                 //feedback ? PDC ?? ????????
-                QMultiMap<ObjectId, CoreId> localExtraConstr;
-                pdcResult = PDCChecker::checkPDC(mesDur, binding, schedule->data(), false, localExtraConstr, fixedParts, mesConstr);
+                QMultiMap<ObjectId, QSet<ObjectId>> localExtraConstr;// == noTogether
+                pdcResult = PDCChecker::checkPDC(mesDur, binding, schedule->data(), false, localExtraConstr, fixedParts, mesConstr, minChainMessage, mesMaxDur);
                 if (pdcResult) {
                     logStream<<"pdcCheck was successful\n";
                     qDebug()<<"pdcCheck was successful\n";
@@ -216,8 +235,9 @@ namespace A653 {
                     logStream<<"pdcCheck unsuccessful, new Constr added\n";
                     qDebug()<<"pdcCheck unsuccessful, new Constr added\n";
                     //??? ???? ????? ??????? ??????????? ??? ????? ??????????? ???????? ????????? ?????????
-                    QMap<ObjectId, int> localMesMaxDur;
-                    localMesMaxDur = countMesMaxDur(schedule->data(), taskCore, mesConstr, mesDur);
+                    QMap<ObjectId, double> localMesMaxDur;
+                    minChainMessage.clear();
+                    localMesMaxDur = countMesMaxDur(schedule->data(), taskCore, mesConstr, mesDur, minChainMessage);
 
                     XMLProcessor::create_afdx_xml(QString::fromStdString(filename), schedule->data(), solution, localMesMaxDur);
 
@@ -236,22 +256,22 @@ namespace A653 {
                              qDebug()<<"there were FAILED only INNER Links";
                              return;
                          }
-                         extraConstr.unite(localExtraConstr);
+    //New ToDO: delete as we have notTogether Constrs              extraConstr.unite(localExtraConstr);
                          //break;
                          //TODO
                          //feedback ?? ????????: ??? ??????? ??? ????? ?????
                     }
                     else{
                     mesConstr.clear();
-                    QMultiMap<ObjectId, CoreId> newlocalExtraConstr;
-                    pdcResult = PDCChecker::checkPDC(mesDur, binding, schedule->data(), false, newlocalExtraConstr, solution, mesConstr);
+                    QMultiMap<ObjectId, QSet<ObjectId>> newlocalExtraConstr; // == notTogether
+                    pdcResult = PDCChecker::checkPDC(mesDur, binding, schedule->data(), false, newlocalExtraConstr, solution, mesConstr, minChainMessage, localMesMaxDur);
                     if(pdcResult){
                         //???? ???? ?????????? ???????? ???????????? ?????????-?????? ?????????? ????
                         break;
                     }
                     else{
                         //????? ??????? ?????????? ?? PDC "??" ??? ???????????
-                        extraConstr.unite(localExtraConstr);
+  //NEW ToDO extraConstr.unite(localExtraConstr);
                     }}
                 }
 
