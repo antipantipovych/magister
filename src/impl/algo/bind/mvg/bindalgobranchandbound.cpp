@@ -23,9 +23,9 @@ double MaxPosLoad=0;
 double ** partLoad;
 double ** partPartChannelLoad;
 double Period = 1000;
-double SchedInt = 10000; //Нужно подсчитать
-double CS_END = 1000; //длительность CS - нужно узнать
-double MIN_MES_DUR = 0.002;//чему равна длительность передачи сообщения по свободному каналу?
+double SchedInt = 10000; //РќСѓР¶РЅРѕ РїРѕРґСЃС‡РёС‚Р°С‚СЊ
+double CS_END = 1000; //РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ CS - РЅСѓР¶РЅРѕ СѓР·РЅР°С‚СЊ
+double MIN_MES_DUR = 0.002;//С‡РµРјСѓ СЂР°РІРЅР° РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ РїРµСЂРµРґР°С‡Рё СЃРѕРѕР±С‰РµРЅРёСЏ РїРѕ СЃРІРѕР±РѕРґРЅРѕРјСѓ РєР°РЅР°Р»Сѓ?
 QFile newlog("new_bound_log.txt");
 QFile oldlog("allgr_b_log.txt");
 //QFile oldlog("b-40_log.txt");
@@ -91,7 +91,7 @@ struct Cores1{
     }
 
     bool operator < (const Cores1 &other) const{
-        return (this->load)>(other.load);//<- по возрастанию оставшегося места
+        return (this->load)>(other.load);//<- РїРѕ РІРѕР·СЂР°СЃС‚Р°РЅРёСЋ РѕСЃС‚Р°РІС€РµРіРѕСЃСЏ РјРµСЃС‚Р°
     }
 };
 
@@ -105,7 +105,7 @@ struct Cores2{
     }
 
     bool operator < (const Cores2 &other) const{
-        return (this->connection)>(other.connection);//<- по возрастанию связей
+        return (this->connection)>(other.connection);//<- РїРѕ РІРѕР·СЂР°СЃС‚Р°РЅРёСЋ СЃРІСЏР·РµР№
     }
 };
 
@@ -199,8 +199,7 @@ double connectionWithModuleByModId(const QList<myTreeNode> &myList, const Object
     return tempLoad;
 }
 
-//ПРОВЕРИТЬ, ЧТО СУММИРУЕМ - время? длительность? реально загрузку?
-
+//РџР РћР’Р•Р РРўР¬, Р§РўРћ РЎРЈРњРњРР РЈР•Рњ - РІСЂРµРјСЏ? РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ? СЂРµР°Р»СЊРЅРѕ Р·Р°РіСЂСѓР·РєСѓ?
 bool countEndThroughtput(const QList<myTreeNode> & myList, const CoreId &c, const ObjectId part, ScheduleData *data,
                          const QMap<ObjectId, double> &moduleThrConstr){
 
@@ -441,34 +440,35 @@ bool somePartsInModule(const QList<myTreeNode> &Solution, const CoreId cor){
 
 double lowerBoundCounting(QList<myTreeNode> &lowerSolution, double &lowerBound,const ObjectIdList &partsToBind,
                           const ObjectIdList &Bounded, Schedule* shed, const QMultiMap<ObjectId, CoreId> &extraConstr,
-                          QMap<ObjectId, CoreId> &fixedParts, const QMap<ObjectId, double> &moduleThrConstr ){
+                          QMap<ObjectId, CoreId> &fixedParts, const QMap<ObjectId, double> &moduleThrConstr,
+                          const QMultiMap<ObjectId, QSet<ObjectId>> &notTogether){
 
-     ObjectIdList notBoundedHere;//множество нераспределенных разделов, мы его будем менять в этой функци
+     ObjectIdList notBoundedHere;//РјРЅРѕР¶РµСЃС‚РІРѕ РЅРµСЂР°СЃРїСЂРµРґРµР»РµРЅРЅС‹С… СЂР°Р·РґРµР»РѕРІ, РјС‹ РµРіРѕ Р±СѓРґРµРј РјРµРЅСЏС‚СЊ РІ СЌС‚РѕР№ С„СѓРЅРєС†Рё
      double maxD=0;
-     //bool flag=true;// флаг воможности построения решения
+     //bool flag=true;//С„Р»Р°Рі РІРѕРјРѕР¶РЅРѕСЃС‚Рё РїРѕСЃС‚СЂРѕРµРЅРёСЏ СЂРµС€РµРЅРёСЏ
 
-     //строим множество нераспределенных разделов
+     //СЃС‚СЂРѕРёРј РјРЅРѕР¶РµСЃС‚РІРѕ РЅРµСЂР°СЃРїСЂРµРґРµР»РµРЅРЅС‹С… СЂР°Р·РґРµР»РѕРІ
      foreach(ObjectId part, partsToBind){
          if(!Bounded.contains(part))
              notBoundedHere.push_back(part);
      }
      QList<CoreId> availCores;
-     ObjectId deleteNow;// раздел, который в данной итерации будет распределен
-     CoreId whereToPut;// ядро, на которое раздел выше будет распределен
-     // пока множество нераспреденных разделов не пусто и пока можно построить решение
+     ObjectId deleteNow;// СЂР°Р·РґРµР», РєРѕС‚РѕСЂС‹Р№ РІ РґР°РЅРЅРѕР№ РёС‚РµСЂР°С†РёРё Р±СѓРґРµС‚ СЂР°СЃРїСЂРµРґРµР»РµРЅ
+     CoreId whereToPut;// СЏРґСЂРѕ, РЅР° РєРѕС‚РѕСЂРѕРµ СЂР°Р·РґРµР» РІС‹С€Рµ Р±СѓРґРµС‚ СЂР°СЃРїСЂРµРґРµР»РµРЅ
+     // РїРѕРєР° РјРЅРѕР¶РµСЃС‚РІРѕ РЅРµСЂР°СЃРїСЂРµРґРµРЅРЅС‹С… СЂР°Р·РґРµР»РѕРІ РЅРµ РїСѓСЃС‚Рѕ Рё РїРѕРєР° РјРѕР¶РЅРѕ РїРѕСЃС‚СЂРѕРёС‚СЊ СЂРµС€РµРЅРёРµ
      while(notBoundedHere.length()!=0 ){
 
          maxD=0;
-         //для каждого раздела из множества нераспределенных
-         //считаем первые две степени сродства
+         //РґР»СЏ РєР°Р¶РґРѕРіРѕ СЂР°Р·РґРµР»Р° РёР· РјРЅРѕР¶РµСЃС‚РІР° РЅРµСЂР°СЃРїСЂРµРґРµР»РµРЅРЅС‹С…
+         //СЃС‡РёС‚Р°РµРј РїРµСЂРІС‹Рµ РґРІРµ СЃС‚РµРїРµРЅРё СЃСЂРѕРґСЃС‚РІР°
          foreach( ObjectId part, notBoundedHere){
              availCores.clear();
              double max1=0;
              double max2=0;
-             //CoreId maxCor;// ядро соответств первой степени сродства
+             //CoreId maxCor;// СЏРґСЂРѕ СЃРѕРѕС‚РІРµС‚СЃС‚РІ РїРµСЂРІРѕР№ СЃС‚РµРїРµРЅРё СЃСЂРѕРґСЃС‚РІР°
              int maxCor=0;
              ObjectId maxMod;
-             // ядра, на которые можно поместить раздел с учетом их остаточной загрузки
+             // СЏРґСЂР°, РЅР° РєРѕС‚РѕСЂС‹Рµ РјРѕР¶РЅРѕ РїРѕРјРµСЃС‚РёС‚СЊ СЂР°Р·РґРµР» СЃ СѓС‡РµС‚РѕРј РёС… РѕСЃС‚Р°С‚РѕС‡РЅРѕР№ Р·Р°РіСЂСѓР·РєРё
 
              foreach(CoreId cor, shed->data()->coresForPartition(part)){
 
@@ -485,24 +485,53 @@ double lowerBoundCounting(QList<myTreeNode> &lowerSolution, double &lowerBound,c
                      }
                      pe++;
                  }
+                 bool togetherFlag = false;
+                 QMultiMap<ObjectId, QSet<ObjectId>>::const_iterator ne = notTogether.find(part);
+                 while (ne!=notTogether.end() && ne.key() == part){
+                     bool notYetBounded = false;
+                     QSet<ObjectId> prohibitedParts = ne.value();
+                     QSet<ObjectId>::const_iterator ppIter = ne.value().begin();
+                     //check if the parts rom the prohibition already in solution - if no - it is Ok, we can go futher
+                     while (ppIter!= ne.value().end()){
+                        if (notBoundedHere.contains(*ppIter)){
+                            notYetBounded = true;
+                            break;
+                        }
+                        ppIter++;
+                     }
+                     if(notYetBounded) continue;
+                     int prohibitedCount = 0;
+                     for (int sol = 0; sol < lowerSolution.size(); sol++){
+                         if(lowerSolution.at(sol).mCore == cor && prohibitedParts.contains(lowerSolution.at(sol).mPart)){
+                             prohibitedCount++;
+                         }
+                     }
+                     //means that one of the prohibition is violated -> we can not assign this part on this core
+                     if (prohibitedCount == prohibitedParts.size() ){
+                         togetherFlag = true;
+                         break;
+                     }
+                     ne++;
+                 }
+                 if(togetherFlag) continue;
                  if (extra) continue;
                  //double loadCur = curLoad(lowerSolution, cor, shed->data()) + shed->data()->partLoad(part,cor);
                  double loadCur = curLoad(lowerSolution, cor, shed->data()) + partLoad[cor.coreNum][part.getId()];
                  bool thr = countEndThroughtput(lowerSolution,cor, part, shed->data(),moduleThrConstr);
                  //double mcl = shed->constraints().maxCoreLoad.value(cor, 1.0);
                  double mcl= shed->constraints().maxCoreLoad[cor];
-                 //если в этом ядре еще есть место
+                 //РµСЃР»Рё РІ СЌС‚РѕРј СЏРґСЂРµ РµС‰Рµ РµСЃС‚СЊ РјРµСЃС‚Рѕ
                  if(loadCur<=mcl && thr ){
                      availCores.push_back(cor);
                  }
              }
 
-             //если доступных дял раздела ядер нет- нельзя построить решения СТОП
+             //РµСЃР»Рё РґРѕСЃС‚СѓРїРЅС‹С… РґСЏР» СЂР°Р·РґРµР»Р° СЏРґРµСЂ РЅРµС‚- РЅРµР»СЊР·СЏ РїРѕСЃС‚СЂРѕРёС‚СЊ СЂРµС€РµРЅРёСЏ РЎРўРћРџ
              if(availCores.length()==0){
                  return 0;
              }
 
-             //если доступено только 1 ядро- поместим на него данный раздел, не считая степени сродства
+             //РµСЃР»Рё РґРѕСЃС‚СѓРїРµРЅРѕ С‚РѕР»СЊРєРѕ 1 СЏРґСЂРѕ- РїРѕРјРµСЃС‚РёРј РЅР° РЅРµРіРѕ РґР°РЅРЅС‹Р№ СЂР°Р·РґРµР», РЅРµ СЃС‡РёС‚Р°СЏ СЃС‚РµРїРµРЅРё СЃСЂРѕРґСЃС‚РІР°
              if(availCores.length()==1){
                  deleteNow=part;
                  whereToPut=availCores[0];
@@ -511,21 +540,21 @@ double lowerBoundCounting(QList<myTreeNode> &lowerSolution, double &lowerBound,c
              /*bool check;
              if(lowerSolution.count()!=0) check=true;
              else check=false;*/
-             //для каждого доступного ядра для данного раздела посчитаем стпени сродства
+             //РґР»СЏ РєР°Р¶РґРѕРіРѕ РґРѕСЃС‚СѓРїРЅРѕРіРѕ СЏРґСЂР° РґР»СЏ РґР°РЅРЅРѕРіРѕ СЂР°Р·РґРµР»Р° РїРѕСЃС‡РёС‚Р°РµРј СЃС‚РїРµРЅРё СЃСЂРѕРґСЃС‚РІР°
              int y=0;
              foreach(CoreId cor, availCores){
 
                  double f=0;
-                 bool check= somePartsInModule(lowerSolution,cor);// проверка, есть ли уже в модуле, содержащем данное ядро, хоть 1 раздел
-                // if(shed->data()->partLoad(part,cor)!=0){//проверка на деление на 0
+                 bool check= somePartsInModule(lowerSolution,cor);// РїСЂРѕРІРµСЂРєР°, РµСЃС‚СЊ Р»Рё СѓР¶Рµ РІ РјРѕРґСѓР»Рµ, СЃРѕРґРµСЂР¶Р°С‰РµРј РґР°РЅРЅРѕРµ СЏРґСЂРѕ, С…РѕС‚СЊ 1 СЂР°Р·РґРµР»
+                // if(shed->data()->partLoad(part,cor)!=0){//РїСЂРѕРІРµСЂРєР° РЅР° РґРµР»РµРЅРёРµ РЅР° 0
                  if(partLoad[cor.coreNum][part.getId()]!=0){
                     if(check){
-                        //если в  модуле уже есть разделы, считаем степень как связи, добавляемые ядром в модуль деленные на его загрузку ядра
+                        //РµСЃР»Рё РІ РјРѕРґСѓР»Рµ СѓР¶Рµ РµСЃС‚СЊ СЂР°Р·РґРµР»С‹, СЃС‡РёС‚Р°РµРј СЃС‚РµРїРµРЅСЊ РєР°Рє СЃРІСЏР·Рё, РґРѕР±Р°РІР»СЏРµРјС‹Рµ СЏРґСЂРѕРј РІ РјРѕРґСѓР»СЊ РґРµР»РµРЅРЅС‹Рµ РЅР° РµРіРѕ Р·Р°РіСЂСѓР·РєСѓ СЏРґСЂР°
                        // f=addLinks(lowerSolution, myTreeNode(part,cor), shed->data())/shed->data()->partLoad(part,cor);
                         f=addLinks(lowerSolution, myTreeNode(part,cor), shed->data())/partLoad[cor.coreNum][part.getId()];
                     }
                     else{
-                        //если модуль пуст- максимальная загрузка ядра, делення на загрузку ядра разделом
+                        //РµСЃР»Рё РјРѕРґСѓР»СЊ РїСѓСЃС‚- РјР°РєСЃРёРјР°Р»СЊРЅР°СЏ Р·Р°РіСЂСѓР·РєР° СЏРґСЂР°, РґРµР»РµРЅРЅСЏ РЅР° Р·Р°РіСЂСѓР·РєСѓ СЏРґСЂР° СЂР°Р·РґРµР»РѕРј
                         //f=shed->constraints().maxCoreLoad.value(cor, 1.0)/shed->data()->partLoad(part,cor);
                         f=shed->constraints().maxCoreLoad.value(cor, 1.0)/partLoad[cor.coreNum][part.getId()];
                     }
@@ -541,7 +570,7 @@ double lowerBoundCounting(QList<myTreeNode> &lowerSolution, double &lowerBound,c
                  }
                  y++;
              }
-             //ищем масимальную разницу первых двух стпеней сродства по всем просмотренным разделам
+             //РёС‰РµРј РјР°СЃРёРјР°Р»СЊРЅСѓСЋ СЂР°Р·РЅРёС†Сѓ РїРµСЂРІС‹С… РґРІСѓС… СЃС‚РїРµРЅРµР№ СЃСЂРѕРґСЃС‚РІР° РїРѕ РІСЃРµРј РїСЂРѕСЃРјРѕС‚СЂРµРЅРЅС‹Рј СЂР°Р·РґРµР»Р°Рј
              if(max1-max2>=maxD){
                  maxD=max1-max2;
                  //CoreId ct=shed->data()->mod
@@ -549,12 +578,12 @@ double lowerBoundCounting(QList<myTreeNode> &lowerSolution, double &lowerBound,c
                  deleteNow=part;
              }
          }
-         //убираем из нераспределенных раздел с наибольшей разницей степеней
+         //СѓР±РёСЂР°РµРј РёР· РЅРµСЂР°СЃРїСЂРµРґРµР»РµРЅРЅС‹С… СЂР°Р·РґРµР» СЃ РЅР°РёР±РѕР»СЊС€РµР№ СЂР°Р·РЅРёС†РµР№ СЃС‚РµРїРµРЅРµР№
          notBoundedHere.removeOne(deleteNow);
-         //добавляем этот раздел в ядро, соответств макисмальной степени сродства раздела и добавляем это все в текущее решение
+         //РґРѕР±Р°РІР»СЏРµРј СЌС‚РѕС‚ СЂР°Р·РґРµР» РІ СЏРґСЂРѕ, СЃРѕРѕС‚РІРµС‚СЃС‚РІ РјР°РєРёСЃРјР°Р»СЊРЅРѕР№ СЃС‚РµРїРµРЅРё СЃСЂРѕРґСЃС‚РІР° СЂР°Р·РґРµР»Р° Рё РґРѕР±Р°РІР»СЏРµРј СЌС‚Рѕ РІСЃРµ РІ С‚РµРєСѓС‰РµРµ СЂРµС€РµРЅРёРµ
          myTreeNode newOne(deleteNow,whereToPut);
          lowerSolution.push_back( newOne);
-         // также прибавляем к значению решения связи, даваемые добавленным разделом
+         // С‚Р°РєР¶Рµ РїСЂРёР±Р°РІР»СЏРµРј Рє Р·РЅР°С‡РµРЅРёСЋ СЂРµС€РµРЅРёСЏ СЃРІСЏР·Рё, РґР°РІР°РµРјС‹Рµ РґРѕР±Р°РІР»РµРЅРЅС‹Рј СЂР°Р·РґРµР»РѕРј
          lowerBound+=addLinks(lowerSolution, newOne,shed->data());
      }
      QMap <ObjectId, double> mesDur ;
@@ -610,8 +639,8 @@ double CountBound(const Module*mod,const double maxModLoad,const QList<myTreeNod
                   const ObjectId BannedPartsInMod,const QList<ObjectId>& BoundedInMod,QList<ObjectId> & BoundedInModNew,
                   QMap<ObjectId,int> &M0M2, Schedule* shed, const bool flag,const ObjectIdList &partsToBind,const double Zn0){
     QList<ObjectId> BoundedHere(BoundedInMod);
-    QList<myTreeNode> curModSolution(ModuleSolution);// изменяемая тут загрузка данного модуля
-    QList<ObjectId> availParts;// лист доступных для данного модуля разделов
+    QList<myTreeNode> curModSolution(ModuleSolution);// РёР·РјРµРЅСЏРµРјР°СЏ С‚СѓС‚ Р·Р°РіСЂСѓР·РєР° РґР°РЅРЅРѕРіРѕ РјРѕРґСѓР»СЏ
+    QList<ObjectId> availParts;// Р»РёСЃС‚ РґРѕСЃС‚СѓРїРЅС‹С… РґР»СЏ РґР°РЅРЅРѕРіРѕ РјРѕРґСѓР»СЏ СЂР°Р·РґРµР»РѕРІ
     CoreId c;
     foreach(CoreId core, shed->data()->cores()){
         if (core.moduleId==mod->id()){
@@ -621,183 +650,183 @@ double CountBound(const Module*mod,const double maxModLoad,const QList<myTreeNod
     }
 
     double place=ModuleLoad(mod,BoundedInMod,shed);
-    double Zn=Zn0;// численное решение
-    bool ready=false;// флаг, tckb true- больше ничего нельзя поместить в модуль
-    foreach(ObjectId p, partsToBind){//для каждого раздела из вообще всех разделов
-        // если раздел еще не содержится в модуле и не запрещен для этого модуля и этот раздел впринципе доступен для данного модуля
+    double Zn=Zn0;// С‡РёСЃР»РµРЅРЅРѕРµ СЂРµС€РµРЅРёРµ
+    bool ready=false;//С„Р»Р°Рі, tckb true- Р±РѕР»СЊС€Рµ РЅРёС‡РµРіРѕ РЅРµР»СЊР·СЏ РїРѕРјРµСЃС‚РёС‚СЊ РІ РјРѕРґСѓР»СЊ
+    foreach(ObjectId p, partsToBind){//РґР»СЏ РєР°Р¶РґРѕРіРѕ СЂР°Р·РґРµР»Р° РёР· РІРѕРѕР±С‰Рµ РІСЃРµС… СЂР°Р·РґРµР»РѕРІ
+        // РµСЃР»Рё СЂР°Р·РґРµР» РµС‰Рµ РЅРµ СЃРѕРґРµСЂР¶РёС‚СЃСЏ РІ РјРѕРґСѓР»Рµ Рё РЅРµ Р·Р°РїСЂРµС‰РµРЅ РґР»СЏ СЌС‚РѕРіРѕ РјРѕРґСѓР»СЏ Рё СЌС‚РѕС‚ СЂР°Р·РґРµР» РІРїСЂРёРЅС†РёРїРµ РґРѕСЃС‚СѓРїРµРЅ РґР»СЏ РґР°РЅРЅРѕРіРѕ РјРѕРґСѓР»СЏ
         if(!Bounded.contains(p)&&!BoundedInMod.contains(p)&&BannedPartsInMod!=p&&shed->data()->modulesForPartition(p).contains(mod->id())){
-            //а также, если в модуле осталось место для этого раздела
+            //Р° С‚Р°РєР¶Рµ, РµСЃР»Рё РІ РјРѕРґСѓР»Рµ РѕСЃС‚Р°Р»РѕСЃСЊ РјРµСЃС‚Рѕ РґР»СЏ СЌС‚РѕРіРѕ СЂР°Р·РґРµР»Р°
            // if(ModuleLoad(mod,BoundedInMod,shed)+shed->data()->partLoad(p,c)<=maxModLoad)
             if(place+partLoad[c.coreNum][p.getId()]<=maxModLoad)
-                availParts.push_back(p);// добавим этот раздел в дист доступных данного модуля
+                availParts.push_back(p);// РґРѕР±Р°РІРёРј СЌС‚РѕС‚ СЂР°Р·РґРµР» РІ РґРёСЃС‚ РґРѕСЃС‚СѓРїРЅС‹С… РґР°РЅРЅРѕРіРѕ РјРѕРґСѓР»СЏ
         }
     }
 
-    //пока есть доступные разделы и хоть 1 раздел еще помещается на модуль
+    //РїРѕРєР° РµСЃС‚СЊ РґРѕСЃС‚СѓРїРЅС‹Рµ СЂР°Р·РґРµР»С‹ Рё С…РѕС‚СЊ 1 СЂР°Р·РґРµР» РµС‰Рµ РїРѕРјРµС‰Р°РµС‚СЃСЏ РЅР° РјРѕРґСѓР»СЊ
     while(!ready&& availParts.count()!=0){
-        double max=0;//максимум жадного критерия
-        ObjectId put;// раздел, соответствующий максимуму критерия
-        foreach(ObjectId o, availParts){// для каждого раздела из доступных
-            //если в модуле отсалось место для данного раздела
+        double max=0;//РјР°РєСЃРёРјСѓРј Р¶Р°РґРЅРѕРіРѕ РєСЂРёС‚РµСЂРёСЏ
+        ObjectId put;// СЂР°Р·РґРµР», СЃРѕРѕС‚РІРµС‚СЃС‚РІСѓСЋС‰РёР№ РјР°РєСЃРёРјСѓРјСѓ РєСЂРёС‚РµСЂРёСЏ
+        foreach(ObjectId o, availParts){// РґР»СЏ РєР°Р¶РґРѕРіРѕ СЂР°Р·РґРµР»Р° РёР· РґРѕСЃС‚СѓРїРЅС‹С…
+            //РµСЃР»Рё РІ РјРѕРґСѓР»Рµ РѕС‚СЃР°Р»РѕСЃСЊ РјРµСЃС‚Рѕ РґР»СЏ РґР°РЅРЅРѕРіРѕ СЂР°Р·РґРµР»Р°
             //if(ModuleLoad(mod,BoundedHere,shed)+shed->data()->partLoad(o,c)<=maxModLoad){
             if(place+partLoad[c.coreNum][o.getId()]<=maxModLoad){
-                double d;// значение критерия
-                //double w=shed->data()->partLoad(o,c);// загрузка данного модуля данным разделом
+                double d;//Р·РЅР°С‡РµРЅРёРµ РєСЂРёС‚РµСЂРёСЏ
+                //double w=shed->data()->partLoad(o,c);// Р·Р°РіСЂСѓР·РєР° РґР°РЅРЅРѕРіРѕ РјРѕРґСѓР»СЏ РґР°РЅРЅС‹Рј СЂР°Р·РґРµР»РѕРј
                 double w=partLoad[c.coreNum][o.getId()];
                 if(w!=0){
                     myTreeNode t(o,c);
-                    if(BoundedHere.count()==0){//если в данном модуле еще ничего не лежит
-                        d=AllLinks(o,availParts,shed)/w;// все связи данного раздела, деленные на его загрузку модуля
+                    if(BoundedHere.count()==0){//РµСЃР»Рё РІ РґР°РЅРЅРѕРј РјРѕРґСѓР»Рµ РµС‰Рµ РЅРёС‡РµРіРѕ РЅРµ Р»РµР¶РёС‚
+                        d=AllLinks(o,availParts,shed)/w;// РІСЃРµ СЃРІСЏР·Рё РґР°РЅРЅРѕРіРѕ СЂР°Р·РґРµР»Р°, РґРµР»РµРЅРЅС‹Рµ РЅР° РµРіРѕ Р·Р°РіСЂСѓР·РєСѓ РјРѕРґСѓР»СЏ
                         //d-=shed->data()->partPartChannelLoad(o,BannedPartsInMod);
                         d-=partPartChannelLoad[o.getId()][BannedPartsInMod.getId()];
                     }
                     else{
-                        d=addLinks(curModSolution,t,shed->data())/w;// связи раздела с внутренностями модуля, деленные на загрузку
+                        d=addLinks(curModSolution,t,shed->data())/w;// СЃРІСЏР·Рё СЂР°Р·РґРµР»Р° СЃ РІРЅСѓС‚СЂРµРЅРЅРѕСЃС‚СЏРјРё РјРѕРґСѓР»СЏ, РґРµР»РµРЅРЅС‹Рµ РЅР° Р·Р°РіСЂСѓР·РєСѓ
                     }
-                    if(d>=max) {// пересчитываем максимум
+                    if(d>=max) {// РїРµСЂРµСЃС‡РёС‚С‹РІР°РµРј РјР°РєСЃРёРјСѓРј
                         max=d;
                         put=o;
                     }
                 }
             }
         }
-        if(max!=0){// если максимум не 0
-            availParts.removeOne(put);// уберем раздел, соответствующий максимуму из доступных
-            Zn+=addLinks(curModSolution,myTreeNode(put,c),shed->data());// добавим связи этого раздела к численному решению
-            curModSolution.push_back(myTreeNode(put,c ));// добавим этот раздел в модуль
+        if(max!=0){// РµСЃР»Рё РјР°РєСЃРёРјСѓРј РЅРµ 0
+            availParts.removeOne(put);// СѓР±РµСЂРµРј СЂР°Р·РґРµР», СЃРѕРѕС‚РІРµС‚СЃС‚РІСѓСЋС‰РёР№ РјР°РєСЃРёРјСѓРјСѓ РёР· РґРѕСЃС‚СѓРїРЅС‹С…
+            Zn+=addLinks(curModSolution,myTreeNode(put,c),shed->data());// РґРѕР±Р°РІРёРј СЃРІСЏР·Рё СЌС‚РѕРіРѕ СЂР°Р·РґРµР»Р° Рє С‡РёСЃР»РµРЅРЅРѕРјСѓ СЂРµС€РµРЅРёСЋ
+            curModSolution.push_back(myTreeNode(put,c ));// РґРѕР±Р°РІРёРј СЌС‚РѕС‚ СЂР°Р·РґРµР» РІ РјРѕРґСѓР»СЊ
             BoundedHere.push_back(put);
             place+=partLoad[c.coreNum][put.getId()];
 
-            if(flag) {// если флаг изменения списков правдив
-                BoundedInModNew.push_back(put);// добавим раздел в лист распределенных в модуле разделов
-                M0M2[put]+=1;// добавим 1 к числу присутствий данного раздела во всех модулях
+            if(flag) {//РµСЃР»Рё С„Р»Р°Рі РёР·РјРµРЅРµРЅРёСЏ СЃРїРёСЃРєРѕРІ РїСЂР°РІРґРёРІ
+                BoundedInModNew.push_back(put);// РґРѕР±Р°РІРёРј СЂР°Р·РґРµР» РІ Р»РёСЃС‚ СЂР°СЃРїСЂРµРґРµР»РµРЅРЅС‹С… РІ РјРѕРґСѓР»Рµ СЂР°Р·РґРµР»РѕРІ
+                M0M2[put]+=1;// РґРѕР±Р°РІРёРј 1 Рє С‡РёСЃР»Сѓ РїСЂРёСЃСѓС‚СЃС‚РІРёР№ РґР°РЅРЅРѕРіРѕ СЂР°Р·РґРµР»Р° РІРѕ РІСЃРµС… РјРѕРґСѓР»СЏС…
             }
         }
-        else ready=true;// если макс= 0 - все , что можно было добавить мы добавили
+        else ready=true;// РµСЃР»Рё РјР°РєСЃ= 0 - РІСЃРµ , С‡С‚Рѕ РјРѕР¶РЅРѕ Р±С‹Р»Рѕ РґРѕР±Р°РІРёС‚СЊ РјС‹ РґРѕР±Р°РІРёР»Рё
     }
     return Zn;
 }
 
 double UpperBoundCounting(const QList<myTreeNode> &currentSolution,const ObjectIdList &partsToBind,
-                          const ObjectIdList  &Bounded, Schedule* shed){
-    QMap<ObjectId, double> newCores;// для модулей и их максимальной сквозной загрузки
-    QMap<ObjectId,int> M0M2;// для множеств М0 и М2+( для каждого объекта подсчитываем сколько раз он вошел в решения рюкзаков)
-    QList<myTreeNode> curModuleSolution[shed->data()->modules().count()];// листы с загрузкой каждого отдельного модуля
-    QList<ObjectId> BoundedInMod[shed->data()->modules().count()];//листы с разделами, которые добавлены в каждый модуль в текущем решении
-    QList<ObjectId> BoundedInModNew[shed->data()->modules().count()];//листы с разделами, которые добавлены в модуль после первого построения решения
-    ObjectId BannedPartsInMod[shed->data()->modules().count()];//запрещенный для модуля раздел
-    QMap<Module*,double> Zn0;// MAP с модулем и его решением до алгоритма
+                          const ObjectIdList &Bounded, Schedule* shed){
+    QMap<ObjectId, double> newCores;// РґР»СЏ РјРѕРґСѓР»РµР№ Рё РёС… РјР°РєСЃРёРјР°Р»СЊРЅРѕР№ СЃРєРІРѕР·РЅРѕР№ Р·Р°РіСЂСѓР·РєРё
+    QMap<ObjectId,int> M0M2;// РґР»СЏ РјРЅРѕР¶РµСЃС‚РІ Рњ0 Рё Рњ2+( РґР»СЏ РєР°Р¶РґРѕРіРѕ РѕР±СЉРµРєС‚Р° РїРѕРґСЃС‡РёС‚С‹РІР°РµРј СЃРєРѕР»СЊРєРѕ СЂР°Р· РѕРЅ РІРѕС€РµР» РІ СЂРµС€РµРЅРёСЏ СЂСЋРєР·Р°РєРѕРІ)
+    QList<myTreeNode> curModuleSolution[shed->data()->modules().count()];// Р»РёСЃС‚С‹ СЃ Р·Р°РіСЂСѓР·РєРѕР№ РєР°Р¶РґРѕРіРѕ РѕС‚РґРµР»СЊРЅРѕРіРѕ РјРѕРґСѓР»СЏ
+    QList<ObjectId> BoundedInMod[shed->data()->modules().count()];//Р»РёСЃС‚С‹ СЃ СЂР°Р·РґРµР»Р°РјРё, РєРѕС‚РѕСЂС‹Рµ РґРѕР±Р°РІР»РµРЅС‹ РІ РєР°Р¶РґС‹Р№ РјРѕРґСѓР»СЊ РІ С‚РµРєСѓС‰РµРј СЂРµС€РµРЅРёРё
+    QList<ObjectId> BoundedInModNew[shed->data()->modules().count()];//Р»РёСЃС‚С‹ СЃ СЂР°Р·РґРµР»Р°РјРё, РєРѕС‚РѕСЂС‹Рµ РґРѕР±Р°РІР»РµРЅС‹ РІ РјРѕРґСѓР»СЊ РїРѕСЃР»Рµ РїРµСЂРІРѕРіРѕ РїРѕСЃС‚СЂРѕРµРЅРёСЏ СЂРµС€РµРЅРёСЏ
+    ObjectId BannedPartsInMod[shed->data()->modules().count()];//Р·Р°РїСЂРµС‰РµРЅРЅС‹Р№ РґР»СЏ РјРѕРґСѓР»СЏ СЂР°Р·РґРµР»
+    QMap<Module*,double> Zn0;// MAP СЃ РјРѕРґСѓР»РµРј Рё РµРіРѕ СЂРµС€РµРЅРёРµРј РґРѕ Р°Р»РіРѕСЂРёС‚РјР°
     foreach(ObjectId o, partsToBind){
         if(!Bounded.contains(o)){
-            M0M2[o]=0;//обнуляем
+            M0M2[o]=0;//РѕР±РЅСѓР»СЏРµРј
         }
     }
 
     int i=0;
-    foreach(Module* mod,shed->data()->modules()){// для каждого модуля системы- строим MAP с объемом и побочные листы
+    foreach(Module* mod,shed->data()->modules()){// РґР»СЏ РєР°Р¶РґРѕРіРѕ РјРѕРґСѓР»СЏ СЃРёСЃС‚РµРјС‹- СЃС‚СЂРѕРёРј MAP СЃ РѕР±СЉРµРјРѕРј Рё РїРѕР±РѕС‡РЅС‹Рµ Р»РёСЃС‚С‹
         double d=0;
         Zn0[mod]=0;
         foreach(CoreId c,mod->cores()){
-            d+=shed->constraints().maxCoreLoad[c];// добавим это ядро в объем модуля
+         d+=shed->constraints().maxCoreLoad[c];// РґРѕР±Р°РІРёРј СЌС‚Рѕ СЏРґСЂРѕ РІ РѕР±СЉРµРј РјРѕРґСѓР»СЏ
         }
         newCores[mod->id()]=d;
-        foreach(myTreeNode temp, currentSolution){//для каждого узла в текущем решении
-            if(temp.mCore.moduleId==mod->id()){// если ядро этого узла находится в данном модуле
+        foreach(myTreeNode temp, currentSolution){//РґР»СЏ РєР°Р¶РґРѕРіРѕ СѓР·Р»Р° РІ С‚РµРєСѓС‰РµРј СЂРµС€РµРЅРёРё
+            if(temp.mCore.moduleId==mod->id()){// РµСЃР»Рё СЏРґСЂРѕ СЌС‚РѕРіРѕ СѓР·Р»Р° РЅР°С…РѕРґРёС‚СЃСЏ РІ РґР°РЅРЅРѕРј РјРѕРґСѓР»Рµ
                 BoundedInModNew[i].push_back(temp.mPart);
-                BoundedInMod[i].push_back(temp.mPart);// добавим раздел этого узла в лист с номером этого модуля
-                Zn0[mod]+= addLinks(curModuleSolution[i],temp , shed->data() );// прибавим связь этого узла
-                curModuleSolution[i].push_back(temp);// занесем этот узел в решение данного модуля
+                BoundedInMod[i].push_back(temp.mPart);// РґРѕР±Р°РІРёРј СЂР°Р·РґРµР» СЌС‚РѕРіРѕ СѓР·Р»Р° РІ Р»РёСЃС‚ СЃ РЅРѕРјРµСЂРѕРј СЌС‚РѕРіРѕ РјРѕРґСѓР»СЏ
+                Zn0[mod]+= addLinks(curModuleSolution[i],temp , shed->data() );// РїСЂРёР±Р°РІРёРј СЃРІСЏР·СЊ СЌС‚РѕРіРѕ СѓР·Р»Р°
+                curModuleSolution[i].push_back(temp);// Р·Р°РЅРµСЃРµРј СЌС‚РѕС‚ СѓР·РµР» РІ СЂРµС€РµРЅРёРµ РґР°РЅРЅРѕРіРѕ РјРѕРґСѓР»СЏ
             }
         }
         i++;
     }
 
-    bool flag=true; //флаг: надо ли в подсчете решения изменять BoundedInModNew и М0М2; При первом проходе для Zn их изменять надо- мы их там именно строим
-    // при построении u1 и u0 их изменять не надо - испортим все.
-    QMap<Module*,double> Zn;// MAP с модулем и его решением на первом шаге алгоритма
+    bool flag=true; //С„Р»Р°Рі: РЅР°РґРѕ Р»Рё РІ РїРѕРґСЃС‡РµС‚Рµ СЂРµС€РµРЅРёСЏ РёР·РјРµРЅСЏС‚СЊ BoundedInModNew Рё Рњ0Рњ2; РџСЂРё РїРµСЂРІРѕРј РїСЂРѕС…РѕРґРµ РґР»СЏ Zn РёС… РёР·РјРµРЅСЏС‚СЊ РЅР°РґРѕ- РјС‹ РёС… С‚Р°Рј РёРјРµРЅРЅРѕ СЃС‚СЂРѕРёРј
+    // РїСЂРё РїРѕСЃС‚СЂРѕРµРЅРёРё u1 Рё u0 РёС… РёР·РјРµРЅСЏС‚СЊ РЅРµ РЅР°РґРѕ - РёСЃРїРѕСЂС‚РёРј РІСЃРµ.
+    QMap<Module*,double> Zn;// MAP СЃ РјРѕРґСѓР»РµРј Рё РµРіРѕ СЂРµС€РµРЅРёРµРј РЅР° РїРµСЂРІРѕРј С€Р°РіРµ Р°Р»РіРѕСЂРёС‚РјР°
     double U0=0;
     i=0;
-    foreach(Module* mod,shed->data()->modules()){// для каждого модуля считаем его отдельное решение
+    foreach(Module* mod,shed->data()->modules()){// РґР»СЏ РєР°Р¶РґРѕРіРѕ РјРѕРґСѓР»СЏ СЃС‡РёС‚Р°РµРј РµРіРѕ РѕС‚РґРµР»СЊРЅРѕРµ СЂРµС€РµРЅРёРµ
         Zn[mod]=CountBound(mod,newCores[mod->id()],curModuleSolution[i],Bounded,BannedPartsInMod[i],BoundedInMod[i],BoundedInModNew[i],M0M2,shed,flag,partsToBind,Zn0[mod]);
-        U0+=Zn[mod];// прибавляем это решение к грубой верхней границе
+        U0+=Zn[mod];// РїСЂРёР±Р°РІР»СЏРµРј СЌС‚Рѕ СЂРµС€РµРЅРёРµ Рє РіСЂСѓР±РѕР№ РІРµСЂС…РЅРµР№ РіСЂР°РЅРёС†Рµ
         i++;
     }
-    QList<ObjectId> M0;// множество М0
-    QList<ObjectId> M2;// множество М2+
-    foreach(ObjectId m, M0M2.keys()){// для каждого объекта этого множества
-        if(M0M2[m]==0) M0.push_back(m);// если объект вошел 0 раз в решения- добавим его в М0
-        else if(M0M2[m]>1) M2.push_back(m);// елси больше 1 раза- добавим его в М2+
+    QList<ObjectId> M0;// РјРЅРѕР¶РµСЃС‚РІРѕ Рњ0
+    QList<ObjectId> M2;// РјРЅРѕР¶РµСЃС‚РІРѕ Рњ2+
+    foreach(ObjectId m, M0M2.keys()){// РґР»СЏ РєР°Р¶РґРѕРіРѕ РѕР±СЉРµРєС‚Р° СЌС‚РѕРіРѕ РјРЅРѕР¶РµСЃС‚РІР°
+        if(M0M2[m]==0) M0.push_back(m);// РµСЃР»Рё РѕР±СЉРµРєС‚ РІРѕС€РµР» 0 СЂР°Р· РІ СЂРµС€РµРЅРёСЏ- РґРѕР±Р°РІРёРј РµРіРѕ РІ Рњ0
+        else if(M0M2[m]>1) M2.push_back(m);// РµР»СЃРё Р±РѕР»СЊС€Рµ 1 СЂР°Р·Р°- РґРѕР±Р°РІРёРј РµРіРѕ РІ Рњ2+
     }
     double maxZn=0;
     foreach(Module* m, shed->data()->modules()){
-        if(Zn[m]>maxZn)maxZn=Zn[m];// найдем максимальное Zn
+        if(Zn[m]>maxZn)maxZn=Zn[m];// РЅР°Р№РґРµРј РјР°РєСЃРёРјР°Р»СЊРЅРѕРµ Zn
     }
 
     flag=false;
-    double GlobalMaxD=0;// то, что будем вычитать из U0
-    double D[M2.count()+M0.count()];// массив для D для каждого из множеств M0 и М2+
-    double u1[M0.count()][shed->data()->modules().count()];// u1 для каждого объекта M0 и всех рюкзаков
+    double GlobalMaxD=0;// С‚Рѕ, С‡С‚Рѕ Р±СѓРґРµРј РІС‹С‡РёС‚Р°С‚СЊ РёР· U0
+    double D[M2.count()+M0.count()];// РјР°СЃСЃРёРІ РґР»СЏ D РґР»СЏ РєР°Р¶РґРѕРіРѕ РёР· РјРЅРѕР¶РµСЃС‚РІ M0 Рё Рњ2+
+    double u1[M0.count()][shed->data()->modules().count()];// u1 РґР»СЏ РєР°Р¶РґРѕРіРѕ РѕР±СЉРµРєС‚Р° M0 Рё РІСЃРµС… СЂСЋРєР·Р°РєРѕРІ
     int j=0;
-    foreach(ObjectId o, M0){// для каждого из М0 считаем u1 и находим минимальную раницу
-         i=0;
-         double minD=maxZn;
-         foreach(Module* mod,shed->data()->modules()){// заставляем включить в каждый модуль текущий раздел из М0
-            // проверяем, есть ли вообще место для этого раздела в данном модуле и подходит ли этот модуль для данного
+    foreach(ObjectId o, M0){// РґР»СЏ РєР°Р¶РґРѕРіРѕ РёР· Рњ0 СЃС‡РёС‚Р°РµРј u1 Рё РЅР°С…РѕРґРёРј РјРёРЅРёРјР°Р»СЊРЅСѓСЋ СЂР°РЅРёС†Сѓ
+        i=0;
+        double minD=maxZn;
+        foreach(Module* mod,shed->data()->modules()){// Р·Р°СЃС‚Р°РІР»СЏРµРј РІРєР»СЋС‡РёС‚СЊ РІ РєР°Р¶РґС‹Р№ РјРѕРґСѓР»СЊ С‚РµРєСѓС‰РёР№ СЂР°Р·РґРµР» РёР· Рњ0
+            // РїСЂРѕРІРµСЂСЏРµРј, РµСЃС‚СЊ Р»Рё РІРѕРѕР±С‰Рµ РјРµСЃС‚Рѕ РґР»СЏ СЌС‚РѕРіРѕ СЂР°Р·РґРµР»Р° РІ РґР°РЅРЅРѕРј РјРѕРґСѓР»Рµ Рё РїРѕРґС…РѕРґРёС‚ Р»Рё СЌС‚РѕС‚ РјРѕРґСѓР»СЊ РґР»СЏ РґР°РЅРЅРѕРіРѕ
             //if(shed->data()->modulesForPartition(o).contains(mod->id()) && ModuleLoad(mod,BoundedInMod[i],shed)+shed->data()->partLoad(o,mod->cores()[0])<=newCores[mod->id()]){
-             if(shed->data()->modulesForPartition(o).contains(mod->id()) && ModuleLoad(mod,BoundedInMod[i],shed)+partLoad[mod->cores()[0].coreNum][o.getId()]<=newCores[mod->id()]){
-             // пересчитываем побочные листы
+            if(shed->data()->modulesForPartition(o).contains(mod->id()) && ModuleLoad(mod,BoundedInMod[i],shed)+partLoad[mod->cores()[0].coreNum][o.getId()]<=newCores[mod->id()]){
+                // РїРµСЂРµСЃС‡РёС‚С‹РІР°РµРј РїРѕР±РѕС‡РЅС‹Рµ Р»РёСЃС‚С‹
                 BoundedInMod[i].push_back(o);
-                curModuleSolution[i].push_back(myTreeNode(o,mod->cores()[0]));// берем произвольное ядро из модуля
-                u1[j][i]=CountBound(mod,newCores[mod->id()],curModuleSolution[i],Bounded,BannedPartsInMod[i],BoundedInMod[i],BoundedInModNew[i],M0M2,shed,flag,partsToBind,Zn0[mod]);// пересчитываем решение
-                BoundedInMod[i].pop_back();// возвращаем все назад
+                curModuleSolution[i].push_back(myTreeNode(o,mod->cores()[0]));// Р±РµСЂРµРј РїСЂРѕРёР·РІРѕР»СЊРЅРѕРµ СЏРґСЂРѕ РёР· РјРѕРґСѓР»СЏ
+                u1[j][i]=CountBound(mod,newCores[mod->id()],curModuleSolution[i],Bounded,BannedPartsInMod[i],BoundedInMod[i],BoundedInModNew[i],M0M2,shed,flag,partsToBind,Zn0[mod]);// РїРµСЂРµСЃС‡РёС‚С‹РІР°РµРј СЂРµС€РµРЅРёРµ
+                BoundedInMod[i].pop_back();// РІРѕР·РІСЂР°С‰Р°РµРј РІСЃРµ РЅР°Р·Р°Рґ
                 curModuleSolution[i].pop_back();
             }
             else{
-                 u1[j][i]=0;
+             u1[j][i]=0;
             }
             if(Zn[mod]<u1[j][i])u1[j][i]=Zn[mod];
-            if(Zn[mod]-u1[j][i]<minD) minD=Zn[mod]-u1[j][i]<minD;// пересчет минимальной разницы
+            if(Zn[mod]-u1[j][i]<minD) minD=Zn[mod]-u1[j][i]<minD;// РїРµСЂРµСЃС‡РµС‚ РјРёРЅРёРјР°Р»СЊРЅРѕР№ СЂР°Р·РЅРёС†С‹
             i++;
         }
-        D[j]=minD;// в качестве D для этого раздела берем минимальную разницу
-        if(D[j]>GlobalMaxD) GlobalMaxD=D[j];// пересчет максимального D
+        D[j]=minD;// РІ РєР°С‡РµСЃС‚РІРµ D РґР»СЏ СЌС‚РѕРіРѕ СЂР°Р·РґРµР»Р° Р±РµСЂРµРј РјРёРЅРёРјР°Р»СЊРЅСѓСЋ СЂР°Р·РЅРёС†Сѓ
+        if(D[j]>GlobalMaxD) GlobalMaxD=D[j];// РїРµСЂРµСЃС‡РµС‚ РјР°РєСЃРёРјР°Р»СЊРЅРѕРіРѕ D
         j++;
     }
 
-    double u0[M2.count()][shed->data()->modules().count()];// u0 для каждого раздела из М2+ и каждого модуля, куда входит этот раздел
+    double u0[M2.count()][shed->data()->modules().count()];// u0 РґР»СЏ РєР°Р¶РґРѕРіРѕ СЂР°Р·РґРµР»Р° РёР· Рњ2+ Рё РєР°Р¶РґРѕРіРѕ РјРѕРґСѓР»СЏ, РєСѓРґР° РІС…РѕРґРёС‚ СЌС‚РѕС‚ СЂР°Р·РґРµР»
 
-     j=0;
+    j=0;
 
-    foreach(ObjectId o, M2){//для каждого раздела из М2+
-        double Sum=0;//сичтаем сумму всех разниц
-        double maxD=0;// считаем максимальную разницу
-         i=0;
-        foreach(Module* mod,shed->data()->modules()){//для каждого модуля
-            if(BoundedInModNew[i].contains(o)){// если этот раздел включен в модуль
+    foreach(ObjectId o, M2){//РґР»СЏ РєР°Р¶РґРѕРіРѕ СЂР°Р·РґРµР»Р° РёР· Рњ2+
+        double Sum=0;//СЃРёС‡С‚Р°РµРј СЃСѓРјРјСѓ РІСЃРµС… СЂР°Р·РЅРёС†
+        double maxD=0;// СЃС‡РёС‚Р°РµРј РјР°РєСЃРёРјР°Р»СЊРЅСѓСЋ СЂР°Р·РЅРёС†Сѓ
+        i=0;
+        foreach(Module* mod,shed->data()->modules()){//РґР»СЏ РєР°Р¶РґРѕРіРѕ РјРѕРґСѓР»СЏ
+            if(BoundedInModNew[i].contains(o)){// РµСЃР»Рё СЌС‚РѕС‚ СЂР°Р·РґРµР» РІРєР»СЋС‡РµРЅ РІ РјРѕРґСѓР»СЊ
                 BannedPartsInMod[i]=o;
-                //BannedPartsInMod[i].push_back(o);// запретим этот раздел в этом модуле
-                u0[j][i]=CountBound(mod,newCores[mod->id()],curModuleSolution[i],Bounded,BannedPartsInMod[i],BoundedInMod[i],BoundedInModNew[i],M0M2,shed,flag,partsToBind,Zn0[mod]);// пересчитаем решение этого модуля
-                //BannedPartsInMod[i].pop_back();// уберем раздел из запрещенных
+                //BannedPartsInMod[i].push_back(o);// Р·Р°РїСЂРµС‚РёРј СЌС‚РѕС‚ СЂР°Р·РґРµР» РІ СЌС‚РѕРј РјРѕРґСѓР»Рµ
+                u0[j][i]=CountBound(mod,newCores[mod->id()],curModuleSolution[i],Bounded,BannedPartsInMod[i],BoundedInMod[i],BoundedInModNew[i],M0M2,shed,flag,partsToBind,Zn0[mod]);// РїРµСЂРµСЃС‡РёС‚Р°РµРј СЂРµС€РµРЅРёРµ СЌС‚РѕРіРѕ РјРѕРґСѓР»СЏ
+                //BannedPartsInMod[i].pop_back();// СѓР±РµСЂРµРј СЂР°Р·РґРµР» РёР· Р·Р°РїСЂРµС‰РµРЅРЅС‹С…
                 if(Zn[mod]<u0[j][i])u0[j][i]=Zn[mod];
-                Sum+=Zn[mod]-u0[j][i];// добавим к сумме разность
-                if(Zn[mod]-u0[j][i]>maxD) maxD=Zn[mod]-u0[j][i];// пересчитаем максимум разницы
+                Sum+=Zn[mod]-u0[j][i];// РґРѕР±Р°РІРёРј Рє СЃСѓРјРјРµ СЂР°Р·РЅРѕСЃС‚СЊ
+                if(Zn[mod]-u0[j][i]>maxD) maxD=Zn[mod]-u0[j][i];// РїРµСЂРµСЃС‡РёС‚Р°РµРј РјР°РєСЃРёРјСѓРј СЂР°Р·РЅРёС†С‹
             }
             i++;
         }
-        D[M0.count()+j]=Sum-maxD;//посчитаем D для данного раздела
-        if(D[M0.count()+j]>GlobalMaxD) GlobalMaxD=D[M0.count()+j];// пересчитаем максимум D
+        D[M0.count()+j]=Sum-maxD;//РїРѕСЃС‡РёС‚Р°РµРј D РґР»СЏ РґР°РЅРЅРѕРіРѕ СЂР°Р·РґРµР»Р°
+        if(D[M0.count()+j]>GlobalMaxD) GlobalMaxD=D[M0.count()+j];// РїРµСЂРµСЃС‡РёС‚Р°РµРј РјР°РєСЃРёРјСѓРј D
         j++;
     }
-  return U0-GlobalMaxD;
+    return U0-GlobalMaxD;
 }
 
 //int AntipBinding(QList<myTreeNode> &currentBranch, QList<myTreeNode> &optSolution, double reversCurSol,double curDoubleSol, double &optDoubleSol,
 //                 const ObjectIdList &partsToBind, ObjectIdList &Bounded,const QList<CoreId> &cores,Schedule* shed, int iter ){
-//    QList<myTreeNode> lowerSolution(currentBranch);// нижняя граница ( изначально в нее также добавляются все узлы текущего решения)
-//    double upperBound=0;// число решения верхней границы
-//    double lowerBound=curDoubleSol;// число решения нижней границы( в него также входит число текущего решения)
+//    QList<myTreeNode> lowerSolution(currentBranch);// РњРҐР¤РњРЄРЄ Р¦РџР®РњРҐР–Р® ( РҐР“РњР®Р’Р®РљР­РњРќ Р‘ РњР•Р• Р Р®Р™Р¤Р• Р”РќРђР®Р‘РљРЄР§Р РЇРЄ Р‘РЇР• РЎР“РљРЁ Р Р•Р™РЎР«Р•Р¦Рќ РџР•Р¬Р•РњРҐРЄ)
+//    double upperBound=0;// Р’РҐРЇРљРќ РџР•Р¬Р•РњРҐРЄ Р‘Р•РџРЈРњР•Р Р¦РџР®РњРҐР–РЁ
+//    double lowerBound=curDoubleSol;// Р’РҐРЇРљРќ РџР•Р¬Р•РњРҐРЄ РњРҐР¤РњР•Р Р¦РџР®РњРҐР–РЁ( Р‘ РњР•Р¦Рќ Р Р®Р™Р¤Р• Р‘РЈРќР”РҐР  Р’РҐРЇРљРќ Р Р•Р™РЎР«Р•Р¦Рќ РџР•Р¬Р•РњРҐРЄ)
 //    if(MaxPosLoad-optDoubleSol>=reversCurSol){
-//        if(iter == partsToBind.length()){//достигли низа ветки --построили какое-то решение, проверим насколько оно хорошо
+//        if(iter == partsToBind.length()){//Р”РќРЇР РҐР¦РљРҐ РњРҐР“Р® Р‘Р•Р Р™РҐ --РћРќРЇР РџРќРҐРљРҐ Р™Р®Р™РќР•-Р Рќ РџР•Р¬Р•РњРҐР•, РћРџРќР‘Р•РџРҐР› РњР®РЇР™РќРљР­Р™Рќ РќРњРќ РЈРќРџРќР¬Рќ
 //            if(curDoubleSol>optDoubleSol) {
 //                optDoubleSol=curDoubleSol;
 //                optSolution.clear();
@@ -808,14 +837,14 @@ double UpperBoundCounting(const QList<myTreeNode> &currentSolution,const ObjectI
 //            return 1;
 //        }
 //    //qDebug()<<iter;
-//        upperBound=UpperBoundCounting(currentBranch,partsToBind,Bounded, shed);//подсчет верхней границы-- проверка отсечения
+//        upperBound=UpperBoundCounting(currentBranch,partsToBind,Bounded, shed);//РћРќР”РЇР’Р•Р  Р‘Р•РџРЈРњР•Р Р¦РџР®РњРҐР–РЁ-- РћРџРќР‘Р•РџР™Р® РќР РЇР•Р’Р•РњРҐРЄ
 //        if(upperBound<=optDoubleSol){
 //            return 0;
 //        }
 
 //        QMultiMap<ObjectId, CoreId> ep;
-//        lowerBound=lowerBoundCounting(lowerSolution,lowerBound,partsToBind,Bounded, shed, ep);//подсчет нижней границы
-//        if(lowerBound>optDoubleSol&& lowerSolution.count()==partsToBind.length()) {//проверка на оптимальность
+//        lowerBound=lowerBoundCounting(lowerSolution,lowerBound,partsToBind,Bounded, shed, ep);//РћРќР”РЇР’Р•Р  РњРҐР¤РњР•Р Р¦РџР®РњРҐР–РЁ
+//        if(lowerBound>optDoubleSol&& lowerSolution.count()==partsToBind.length()) {//РћРџРќР‘Р•РџР™Р® РњР® РќРћР РҐР›Р®РљР­РњРќРЇР Р­
 //            optDoubleSol=lowerBound;
 //            optSolution.clear();
 //            foreach (myTreeNode t, lowerSolution) {
@@ -823,41 +852,41 @@ double UpperBoundCounting(const QList<myTreeNode> &currentSolution,const ObjectI
 //            }
 //        }
 //        if(optDoubleSol==MaxPosLoad){return 1;}
-//     // добавим раздел с индексом iter+1 в список распределенных
+//     // Р”РќРђР®Р‘РҐР› РџР®Р“Р”Р•Рљ РЇ РҐРњР”Р•Р™РЇРќР› iter+1 Р‘ РЇРћРҐРЇРќР™ РџР®РЇРћРџР•Р”Р•РљР•РњРњРЁРЈ
 //        //Bounded.push_back(partsToBind[iter+1]);
 //        Bounded.push_back(partsToBind.at(iter));//+1
-//        //для каждого доступного ядра для следующего раздела
+//        //Р”РљРЄ Р™Р®Р¤Р”РќР¦Рќ Р”РќРЇР РЎРћРњРќР¦Рќ РЄР”РџР® Р”РљРЄ РЇРљР•Р”РЎР§Р«Р•Р¦Рќ РџР®Р“Р”Р•РљР®
 
 //        foreach(CoreId c, shed->data()->coresForPartition(partsToBind[iter])){//+1
 //            //double loadCur = curLoad(currentBranch, c,  shed->data()) + shed->data()->partLoad(partsToBind[iter],c);//+1
 //            double loadCur = curLoad(currentBranch, c,  shed->data()) + partLoad[c.coreNum][partsToBind[iter].getId()];
 //            double mcl = shed->constraints().maxCoreLoad.value(c, 1.0);
 
-//            //если в этом ядре еще есть место
+//            //Р•РЇРљРҐ Р‘ Р©Р РќР› РЄР”РџР• Р•Р«Р• Р•РЇР Р­ Р›Р•РЇР Рќ
 
 //            if(loadCur<=mcl){
 
-//                //назначим следующий раздел в это ядро,
+//                //РњР®Р“РњР®Р’РҐР› РЇРљР•Р”РЎР§Р«РҐР РџР®Р“Р”Р•Рљ Р‘ Р©Р Рќ РЄР”РџРќ,
 
 //               // Bounded.push_back(partsToBind[iter+1].ObjectId);
 //                myTreeNode temp(partsToBind.at(iter),c);//+1
 //                currentBranch.push_back(temp);
 
-//                //добавим в текущее решение связи, котрые дает этот раздел
+//                //Р”РќРђР®Р‘РҐР› Р‘ Р Р•Р™РЎР«Р•Р• РџР•Р¬Р•РњРҐР• РЇР‘РЄР“РҐ, Р™РќР РџРЁР• Р”Р®Р•Р  Р©Р РќР  РџР®Р“Р”Р•Рљ
 //                double a=addLinks(currentBranch, temp, shed->data());
 //                double b=addTime(currentBranch, temp, shed->data());
 
 //                curDoubleSol+=a;
 //                reversCurSol+=b;
 
-//                //запустим рекурсию с текущим решением, оптимальным, набором разделов, распределенных разделов, набором ядер,
-//                // расписанием для данных и ограничений, и номером раздела только что распределенного
+//                //Р“Р®РћРЎРЇР РҐР› РџР•Р™РЎРџРЇРҐР§ РЇ Р Р•Р™РЎР«РҐР› РџР•Р¬Р•РњРҐР•Р›, РќРћР РҐР›Р®РљР­РњРЁР›, РњР®РђРќРџРќР› РџР®Р“Р”Р•РљРќР‘, РџР®РЇРћРџР•Р”Р•РљР•РњРњРЁРЈ РџР®Р“Р”Р•РљРќР‘, РњР®РђРќРџРќР› РЄР”Р•Рџ,
+//                // РџР®РЇРћРҐРЇР®РњРҐР•Р› Р”РљРЄ Р”Р®РњРњРЁРЈ РҐ РќР¦РџР®РњРҐР’Р•РњРҐР, РҐ РњРќР›Р•РџРќР› РџР®Р“Р”Р•РљР® Р РќРљР­Р™Рќ Р’Р Рќ РџР®РЇРћРџР•Р”Р•РљР•РњРњРќР¦Рќ
 //                int f= AntipBinding(currentBranch,optSolution,reversCurSol,curDoubleSol,optDoubleSol, partsToBind,Bounded,cores,shed,iter+1);
 
-//                //уберем этот раздел из списка распределенных и уберем этот раздел из этого ядра
+//                //РЎРђР•РџР•Р› Р©Р РќР  РџР®Р“Р”Р•Рљ РҐР“ РЇРћРҐРЇР™Р® РџР®РЇРћРџР•Р”Р•РљР•РњРњРЁРЈ РҐ РЎРђР•РџР•Р› Р©Р РќР  РџР®Р“Р”Р•Рљ РҐР“ Р©Р РќР¦Рќ РЄР”РџР®
 //                currentBranch.pop_back();
 
-//                // уберем связь данного раздела
+//                // РЎРђР•РџР•Р› РЇР‘РЄР“Р­ Р”Р®РњРњРќР¦Рќ РџР®Р“Р”Р•РљР®
 //                curDoubleSol-=a;
 //                reversCurSol-=b;
 //                //Bounded.pop_back();
@@ -872,127 +901,129 @@ double UpperBoundCounting(const QList<myTreeNode> &currentSolution,const ObjectI
 // }
 
 //****
-//* возвращает минимум из двух вариантов верхних границ
-//* либо U0-maxDi
-//* либо U0-sumDi/2
+//* РІРѕР·РІСЂР°С‰Р°РµС‚ РјРёРЅРёРјСѓРј РёР· РґРІСѓС… РІР°СЂРёР°РЅС‚РѕРІ РІРµСЂС…РЅРёС… РіСЂР°РЅРёС†
+//* Р»РёР±Рѕ U0-maxDi
+//* Р»РёР±Рѕ U0-sumDi/2
 //****
 double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const ObjectIdList &partsToBind,
-                          const ObjectIdList  &Bounded, Schedule* shed){
-    QMap<ObjectId, double> newCores;// для модулей и их максимальной сквозной загрузки
-    QMap<ObjectId,int> M0M2;// для множеств М0 и М2+( для каждого объекта подсчитываем сколько раз он вошел в решения рюкзаков)
-    QList<myTreeNode> curModuleSolution[shed->data()->modules().count()];// листы с загрузкой каждого отдельного модуля
-    QList<ObjectId> BoundedInMod[shed->data()->modules().count()];//листы с разделами, которые добавлены в каждый модуль в текущем решении
-    QList<ObjectId> BoundedInModNew[shed->data()->modules().count()];//листы с разделами, которые добавлены в модуль после первого построения решения
-    ObjectId BannedPartsInMod[shed->data()->modules().count()];//запрещенный для модуля раздел
-    QMap<Module*,double> Zn0;// MAP с модулем и его решением до алгоритма
+                                const ObjectIdList &Bounded, Schedule* shed){
+    QMap<ObjectId, double> newCores;// РґР»СЏ РјРѕРґСѓР»РµР№ Рё РёС… РјР°РєСЃРёРјР°Р»СЊРЅРѕР№ СЃРєРІРѕР·РЅРѕР№ Р·Р°РіСЂСѓР·РєРё
+    QMap<ObjectId,int> M0M2;// РґР»СЏ РјРЅРѕР¶РµСЃС‚РІ Рњ0 Рё Рњ2+( РґР»СЏ РєР°Р¶РґРѕРіРѕ РѕР±СЉРµРєС‚Р° РїРѕРґСЃС‡РёС‚С‹РІР°РµРј СЃРєРѕР»СЊРєРѕ СЂР°Р· РѕРЅ РІРѕС€РµР» РІ СЂРµС€РµРЅРёСЏ СЂСЋРєР·Р°РєРѕРІ)
+    QList<myTreeNode> curModuleSolution[shed->data()->modules().count()];// Р»РёСЃС‚С‹ СЃ Р·Р°РіСЂСѓР·РєРѕР№ РєР°Р¶РґРѕРіРѕ РѕС‚РґРµР»СЊРЅРѕРіРѕ РјРѕРґСѓР»СЏ
+    QList<ObjectId> BoundedInMod[shed->data()->modules().count()];//Р»РёСЃС‚С‹ СЃ СЂР°Р·РґРµР»Р°РјРё, РєРѕС‚РѕСЂС‹Рµ РґРѕР±Р°РІР»РµРЅС‹ РІ РєР°Р¶РґС‹Р№ РјРѕРґСѓР»СЊ РІ С‚РµРєСѓС‰РµРј СЂРµС€РµРЅРёРё
+    QList<ObjectId> BoundedInModNew[shed->data()->modules().count()];//Р»РёСЃС‚С‹ СЃ СЂР°Р·РґРµР»Р°РјРё, РєРѕС‚РѕСЂС‹Рµ РґРѕР±Р°РІР»РµРЅС‹ РІ РјРѕРґСѓР»СЊ РїРѕСЃР»Рµ РїРµСЂРІРѕРіРѕ РїРѕСЃС‚СЂРѕРµРЅРёСЏ СЂРµС€РµРЅРёСЏ
+    ObjectId BannedPartsInMod[shed->data()->modules().count()];//Р·Р°РїСЂРµС‰РµРЅРЅС‹Р№ РґР»СЏ РјРѕРґСѓР»СЏ СЂР°Р·РґРµР»
+    QMap<Module*,double> Zn0;// MAP СЃ РјРѕРґСѓР»РµРј Рё РµРіРѕ СЂРµС€РµРЅРёРµРј РґРѕ Р°Р»РіРѕСЂРёС‚РјР°
     foreach(ObjectId o, partsToBind){
         if(!Bounded.contains(o)){
-            M0M2[o]=0;//обнуляем
+            M0M2[o]=0;//РѕР±РЅСѓР»СЏРµРј
         }
     }
 
     int i=0;
-    foreach(Module* mod,shed->data()->modules()){// для каждого модуля системы- строим MAP с объемом и побочные листы
+    foreach(Module* mod,shed->data()->modules()){// РґР»СЏ РєР°Р¶РґРѕРіРѕ РјРѕРґСѓР»СЏ СЃРёСЃС‚РµРјС‹- СЃС‚СЂРѕРёРј MAP СЃ РѕР±СЉРµРјРѕРј Рё РїРѕР±РѕС‡РЅС‹Рµ Р»РёСЃС‚С‹
         double d=0;
         Zn0[mod]=0;
         foreach(CoreId c,mod->cores()){
-            d+=shed->constraints().maxCoreLoad[c];// добавим это ядро в объем модуля
+            d+=shed->constraints().maxCoreLoad[c];// РґРѕР±Р°РІРёРј СЌС‚Рѕ СЏРґСЂРѕ РІ РѕР±СЉРµРј РјРѕРґСѓР»СЏ
         }
         newCores[mod->id()]=d;
-        foreach(myTreeNode temp, currentSolution){//для каждого узла в текущем решении
-            if(temp.mCore.moduleId==mod->id()){// если ядро этого узла находится в данном модуле
+        foreach(myTreeNode temp, currentSolution){//РґР»СЏ РєР°Р¶РґРѕРіРѕ СѓР·Р»Р° РІ С‚РµРєСѓС‰РµРј СЂРµС€РµРЅРёРё
+            if(temp.mCore.moduleId==mod->id()){// РµСЃР»Рё СЏРґСЂРѕ СЌС‚РѕРіРѕ СѓР·Р»Р° РЅР°С…РѕРґРёС‚СЃСЏ РІ РґР°РЅРЅРѕРј РјРѕРґСѓР»Рµ
                 BoundedInModNew[i].push_back(temp.mPart);
-                BoundedInMod[i].push_back(temp.mPart);// добавим раздел этого узла в лист с номером этого модуля
-                Zn0[mod]+= addLinks(curModuleSolution[i],temp , shed->data() );// прибавим связь этого узла
-                curModuleSolution[i].push_back(temp);// занесем этот узел в решение данного модуля
+                BoundedInMod[i].push_back(temp.mPart);// РґРѕР±Р°РІРёРј СЂР°Р·РґРµР» СЌС‚РѕРіРѕ СѓР·Р»Р° РІ Р»РёСЃС‚ СЃ РЅРѕРјРµСЂРѕРј СЌС‚РѕРіРѕ РјРѕРґСѓР»СЏ
+                Zn0[mod]+= addLinks(curModuleSolution[i],temp , shed->data() );// РїСЂРёР±Р°РІРёРј СЃРІСЏР·СЊ СЌС‚РѕРіРѕ СѓР·Р»Р°
+                curModuleSolution[i].push_back(temp);// Р·Р°РЅРµСЃРµРј СЌС‚РѕС‚ СѓР·РµР» РІ СЂРµС€РµРЅРёРµ РґР°РЅРЅРѕРіРѕ РјРѕРґСѓР»СЏ
             }
         }
         i++;
     }
 
-    bool flag=true; //флаг: надо ли в подсчете решения изменять BoundedInModNew и М0М2; При первом проходе для Zn их изменять надо- мы их там именно строим
-    // при построении u1 и u0 их изменять не надо - испортим все.
-    QMap<Module*,double> Zn;// MAP с модулем и его решением на первом шаге алгоритма
+    bool flag=true; //С„Р»Р°Рі: РЅР°РґРѕ Р»Рё РІ РїРѕРґСЃС‡РµС‚Рµ СЂРµС€РµРЅРёСЏ РёР·РјРµРЅСЏС‚СЊ BoundedInModNew Рё Рњ0Рњ2; РџСЂРё РїРµСЂРІРѕРј РїСЂРѕС…РѕРґРµ РґР»СЏ Zn РёС… РёР·РјРµРЅСЏС‚СЊ РЅР°РґРѕ- РјС‹ РёС… С‚Р°Рј РёРјРµРЅРЅРѕ СЃС‚СЂРѕРёРј
+    // РїСЂРё РїРѕСЃС‚СЂРѕРµРЅРёРё u1 Рё u0 РёС… РёР·РјРµРЅСЏС‚СЊ РЅРµ РЅР°РґРѕ - РёСЃРїРѕСЂС‚РёРј РІСЃРµ.
+    QMap<Module*,double> Zn;// MAP СЃ РјРѕРґСѓР»РµРј Рё РµРіРѕ СЂРµС€РµРЅРёРµРј РЅР° РїРµСЂРІРѕРј С€Р°РіРµ Р°Р»РіРѕСЂРёС‚РјР°
     double U0=0;
     i=0;
-    foreach(Module* mod,shed->data()->modules()){// для каждого модуля считаем его отдельное решение
+    foreach(Module* mod,shed->data()->modules()){// РґР»СЏ РєР°Р¶РґРѕРіРѕ РјРѕРґСѓР»СЏ СЃС‡РёС‚Р°РµРј РµРіРѕ РѕС‚РґРµР»СЊРЅРѕРµ СЂРµС€РµРЅРёРµ
         Zn[mod]=CountBound(mod,newCores[mod->id()],curModuleSolution[i],Bounded,BannedPartsInMod[i],BoundedInMod[i],BoundedInModNew[i],M0M2,shed,flag,partsToBind,Zn0[mod]);
-        U0+=Zn[mod];// прибавляем это решение к грубой верхней границе
+        U0+=Zn[mod];// РїСЂРёР±Р°РІР»СЏРµРј СЌС‚Рѕ СЂРµС€РµРЅРёРµ Рє РіСЂСѓР±РѕР№ РІРµСЂС…РЅРµР№ РіСЂР°РЅРёС†Рµ
         i++;
     }
-    QList<ObjectId> M0;// множество М0
-    QList<ObjectId> M2;// множество М2+
-    foreach(ObjectId m, M0M2.keys()){// для каждого объекта этого множества
-        if(M0M2[m]==0) M0.push_back(m);// если объект вошел 0 раз в решения- добавим его в М0
-        else if(M0M2[m]>1) M2.push_back(m);// елси больше 1 раза- добавим его в М2+
+    QList<ObjectId> M0;// РјРЅРѕР¶РµСЃС‚РІРѕ Рњ0
+    QList<ObjectId> M2;// РјРЅРѕР¶РµСЃС‚РІРѕ Рњ2+
+    foreach(ObjectId m, M0M2.keys()){// РґР»СЏ РєР°Р¶РґРѕРіРѕ РѕР±СЉРµРєС‚Р° СЌС‚РѕРіРѕ РјРЅРѕР¶РµСЃС‚РІР°
+        if(M0M2[m]==0) M0.push_back(m);// РµСЃР»Рё РѕР±СЉРµРєС‚ РІРѕС€РµР» 0 СЂР°Р· РІ СЂРµС€РµРЅРёСЏ- РґРѕР±Р°РІРёРј РµРіРѕ РІ Рњ0
+        else if(M0M2[m]>1) M2.push_back(m);// РµР»СЃРё Р±РѕР»СЊС€Рµ 1 СЂР°Р·Р°- РґРѕР±Р°РІРёРј РµРіРѕ РІ Рњ2+
     }
     double maxZn=0;
     foreach(Module* m, shed->data()->modules()){
-        if(Zn[m]>maxZn)maxZn=Zn[m];// найдем максимальное Zn
+        if(Zn[m]>maxZn)maxZn=Zn[m];// РЅР°Р№РґРµРј РјР°РєСЃРёРјР°Р»СЊРЅРѕРµ Zn
     }
 
     flag=false;
-    double GlobalMaxD=0;// то, что будем вычитать из U0
+    double GlobalMaxD=0;// С‚Рѕ, С‡С‚Рѕ Р±СѓРґРµРј РІС‹С‡РёС‚Р°С‚СЊ РёР· U0
     double SumD=0;
-    double D[M2.count()+M0.count()];// массив для D для каждого из множеств M0 и М2+
-    double u1[M0.count()][shed->data()->modules().count()];// u1 для каждого объекта M0 и всех рюкзаков
+    double D[M2.count()+M0.count()];// РјР°СЃСЃРёРІ РґР»СЏ D РґР»СЏ РєР°Р¶РґРѕРіРѕ РёР· РјРЅРѕР¶РµСЃС‚РІ M0 Рё Рњ2+
+    double u1[M0.count()][shed->data()->modules().count()];// u1 РґР»СЏ РєР°Р¶РґРѕРіРѕ РѕР±СЉРµРєС‚Р° M0 Рё РІСЃРµС… СЂСЋРєР·Р°РєРѕРІ
     int j=0;
-    foreach(ObjectId o, M0){// для каждого из М0 считаем u1 и находим минимальную раницу
-         i=0;
-         double minD=maxZn;
-         foreach(Module* mod,shed->data()->modules()){// заставляем включить в каждый модуль текущий раздел из М0
-            // проверяем, есть ли вообще место для этого раздела в данном модуле и подходит ли этот модуль для данного
+    foreach(ObjectId o, M0){// РґР»СЏ РєР°Р¶РґРѕРіРѕ РёР· Рњ0 СЃС‡РёС‚Р°РµРј u1 Рё РЅР°С…РѕРґРёРј РјРёРЅРёРјР°Р»СЊРЅСѓСЋ СЂР°РЅРёС†Сѓ
+        i=0;
+        double minD=maxZn;
+        foreach(Module* mod,shed->data()->modules()){// Р·Р°СЃС‚Р°РІР»СЏРµРј РІРєР»СЋС‡РёС‚СЊ РІ РєР°Р¶РґС‹Р№ РјРѕРґСѓР»СЊ С‚РµРєСѓС‰РёР№ СЂР°Р·РґРµР» РёР· Рњ0
+            // РїСЂРѕРІРµСЂСЏРµРј, РµСЃС‚СЊ Р»Рё РІРѕРѕР±С‰Рµ РјРµСЃС‚Рѕ РґР»СЏ СЌС‚РѕРіРѕ СЂР°Р·РґРµР»Р° РІ РґР°РЅРЅРѕРј РјРѕРґСѓР»Рµ Рё РїРѕРґС…РѕРґРёС‚ Р»Рё СЌС‚РѕС‚ РјРѕРґСѓР»СЊ РґР»СЏ РґР°РЅРЅРѕРіРѕ
             //if(shed->data()->modulesForPartition(o).contains(mod->id()) && ModuleLoad(mod,BoundedInMod[i],shed)+shed->data()->partLoad(o,mod->cores()[0])<=newCores[mod->id()]){
-             if(shed->data()->modulesForPartition(o).contains(mod->id()) && ModuleLoad(mod,BoundedInMod[i],shed)+partLoad[mod->cores()[0].coreNum][o.getId()]<=newCores[mod->id()]){
-             // пересчитываем побочные листы
+            if(shed->data()->modulesForPartition(o).contains(mod->id()) && ModuleLoad(mod,BoundedInMod[i],shed)+partLoad[mod->cores()[0].coreNum][o.getId()]<=newCores[mod->id()]){
+                // РїРµСЂРµСЃС‡РёС‚С‹РІР°РµРј РїРѕР±РѕС‡РЅС‹Рµ Р»РёСЃС‚С‹
                 BoundedInMod[i].push_back(o);
-                curModuleSolution[i].push_back(myTreeNode(o,mod->cores()[0]));// берем произвольное ядро из модуля
-                u1[j][i]=CountBound(mod,newCores[mod->id()],curModuleSolution[i],Bounded,BannedPartsInMod[i],BoundedInMod[i],BoundedInModNew[i],M0M2,shed,flag,partsToBind,Zn0[mod]);// пересчитываем решение
-                BoundedInMod[i].pop_back();// возвращаем все назад
+                curModuleSolution[i].push_back(myTreeNode(o,mod->cores()[0]));// Р±РµСЂРµРј РїСЂРѕРёР·РІРѕР»СЊРЅРѕРµ СЏРґСЂРѕ РёР· РјРѕРґСѓР»СЏ
+                u1[j][i]=CountBound(mod,newCores[mod->id()],curModuleSolution[i],Bounded,BannedPartsInMod[i],BoundedInMod[i],BoundedInModNew[i],M0M2,shed,flag,partsToBind,Zn0[mod]);// РїРµСЂРµСЃС‡РёС‚С‹РІР°РµРј СЂРµС€РµРЅРёРµ
+                BoundedInMod[i].pop_back();// РІРѕР·РІСЂР°С‰Р°РµРј РІСЃРµ РЅР°Р·Р°Рґ
                 curModuleSolution[i].pop_back();
             }
             else{
-                 u1[j][i]=0;
+                u1[j][i]=0;
             }
             if(Zn[mod]<u1[j][i])u1[j][i]=Zn[mod];
-            if(Zn[mod]-u1[j][i]<minD) minD=Zn[mod]-u1[j][i]<minD;// пересчет минимальной разницы
+            if(Zn[mod]-u1[j][i]<minD) minD=Zn[mod]-u1[j][i]<minD;// РїРµСЂРµСЃС‡РµС‚ РјРёРЅРёРјР°Р»СЊРЅРѕР№ СЂР°Р·РЅРёС†С‹
             i++;
         }
-        D[j]=minD;// в качестве D для этого раздела берем минимальную разницу
+        D[j]=minD;// РІ РєР°С‡РµСЃС‚РІРµ D РґР»СЏ СЌС‚РѕРіРѕ СЂР°Р·РґРµР»Р° Р±РµСЂРµРј РјРёРЅРёРјР°Р»СЊРЅСѓСЋ СЂР°Р·РЅРёС†Сѓ
         SumD+=D[j];
-        if(D[j]>GlobalMaxD) GlobalMaxD=D[j];// пересчет максимального D
+        if(D[j]>GlobalMaxD) GlobalMaxD=D[j];// РїРµСЂРµСЃС‡РµС‚ РјР°РєСЃРёРјР°Р»СЊРЅРѕРіРѕ D
         j++;
     }
 
-    double u0[M2.count()][shed->data()->modules().count()];// u0 для каждого раздела из М2+ и каждого модуля, куда входит этот раздел
+    double u0[M2.count()][shed->data()->modules().count()];// u0 РґР»СЏ РєР°Р¶РґРѕРіРѕ СЂР°Р·РґРµР»Р° РёР· Рњ2+ Рё РєР°Р¶РґРѕРіРѕ РјРѕРґСѓР»СЏ, РєСѓРґР° РІС…РѕРґРёС‚ СЌС‚РѕС‚ СЂР°Р·РґРµР»
 
-     j=0;
+    j=0;
 
-    foreach(ObjectId o, M2){//для каждого раздела из М2+
-        double Sum=0;//сичтаем сумму всех разниц
-        double maxD=0;// считаем максимальную разницу
-         i=0;
-        foreach(Module* mod,shed->data()->modules()){//для каждого модуля
-            if(BoundedInModNew[i].contains(o)){// если этот раздел включен в модуль
+    foreach(ObjectId o, M2){//РґР»СЏ РєР°Р¶РґРѕРіРѕ СЂР°Р·РґРµР»Р° РёР· Рњ2+
+        double Sum=0;//СЃРёС‡С‚Р°РµРј СЃСѓРјРјСѓ РІСЃРµС… СЂР°Р·РЅРёС†
+        double maxD=0;// СЃС‡РёС‚Р°РµРј РјР°РєСЃРёРјР°Р»СЊРЅСѓСЋ СЂР°Р·РЅРёС†Сѓ
+        i=0;
+        foreach(Module* mod,shed->data()->modules()){//РґР»СЏ РєР°Р¶РґРѕРіРѕ РјРѕРґСѓР»СЏ
+            if(BoundedInModNew[i].contains(o)){// РµСЃР»Рё СЌС‚РѕС‚ СЂР°Р·РґРµР» РІРєР»СЋС‡РµРЅ РІ РјРѕРґСѓР»СЊ
                 BannedPartsInMod[i]=o;
-                //BannedPartsInMod[i].push_back(o);// запретим этот раздел в этом модуле
-                u0[j][i]=CountBound(mod,newCores[mod->id()],curModuleSolution[i],Bounded,BannedPartsInMod[i],BoundedInMod[i],BoundedInModNew[i],M0M2,shed,flag,partsToBind,Zn0[mod]);// пересчитаем решение этого модуля
-                //BannedPartsInMod[i].pop_back();// уберем раздел из запрещенных
+                //BannedPartsInMod[i].push_back(o);// Р·Р°РїСЂРµС‚РёРј СЌС‚РѕС‚ СЂР°Р·РґРµР» РІ СЌС‚РѕРј РјРѕРґСѓР»Рµ
+                u0[j][i]=CountBound(mod,newCores[mod->id()],curModuleSolution[i],Bounded,BannedPartsInMod[i],BoundedInMod[i],BoundedInModNew[i],M0M2,shed,flag,partsToBind,Zn0[mod]);// РїРµСЂРµСЃС‡РёС‚Р°РµРј СЂРµС€РµРЅРёРµ СЌС‚РѕРіРѕ РјРѕРґСѓР»СЏ
+                //BannedPartsInMod[i].pop_back();// СѓР±РµСЂРµРј СЂР°Р·РґРµР» РёР· Р·Р°РїСЂРµС‰РµРЅРЅС‹С…
                 if(Zn[mod]<u0[j][i])u0[j][i]=Zn[mod];
-                Sum+=Zn[mod]-u0[j][i];// добавим к сумме разность
-                if(Zn[mod]-u0[j][i]>maxD) maxD=Zn[mod]-u0[j][i];// пересчитаем максимум разницы
+                Sum+=Zn[mod]-u0[j][i];// РґРѕР±Р°РІРёРј Рє СЃСѓРјРјРµ СЂР°Р·РЅРѕСЃС‚СЊ
+                if(Zn[mod]-u0[j][i]>maxD) maxD=Zn[mod]-u0[j][i];// РїРµСЂРµСЃС‡РёС‚Р°РµРј РјР°РєСЃРёРјСѓРј СЂР°Р·РЅРёС†С‹
             }
             i++;
         }
-        D[M0.count()+j]=Sum-maxD;//посчитаем D для данного раздела
+        D[M0.count()+j]=Sum-maxD;//РїРѕСЃС‡РёС‚Р°РµРј D РґР»СЏ РґР°РЅРЅРѕРіРѕ СЂР°Р·РґРµР»Р°
         SumD+=D[M0.count()+j];
-        if(D[M0.count()+j]>GlobalMaxD) GlobalMaxD=D[M0.count()+j];// пересчитаем максимум D
+        if(D[M0.count()+j]>GlobalMaxD) GlobalMaxD=D[M0.count()+j];// РїРµСЂРµСЃС‡РёС‚Р°РµРј РјР°РєСЃРёРјСѓРј D
         j++;
     }
     double SumD2=SumD/2;
     if(GlobalMaxD>SumD2) return U0-GlobalMaxD;
-    else{  return U0-SumD2;}
+    else{ return U0-SumD2;}
 }
+
+
 
  bool compareCores(CoreId c1, CoreId c2, Schedule* shed){
      double x =shed->constraints().maxCoreLoad[c1];
@@ -1080,7 +1111,7 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
                     if(shed->data()->coreLoad(cores.at(j))<=0.0){
                         if(compareCores(cores.at(i),cores.at(j), shed)){
                             if(!groupEx){
-                                //создать группу и добавить оба объекта
+                                //СЃРѕР·РґР°С‚СЊ РіСЂСѓРїРїСѓ Рё РґРѕР±Р°РІРёС‚СЊ РѕР±Р° РѕР±СЉРµРєС‚Р°
                                 Group grStruct;
                                 grStruct.num=num;
                                 num++;
@@ -1090,7 +1121,7 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
                                 groupEx=true;
                             }
                             else{
-                                //добавить только внутренний объект
+                                //РґРѕР±Р°РІРёС‚СЊ С‚РѕР»СЊРєРѕ РІРЅСѓС‚СЂРµРЅРЅРёР№ РѕР±СЉРµРєС‚
                                 QMultiHash<ObjectId,Group>::iterator iter =groups.find(cores.at(i).moduleId);
                                 while(iter!=groups.end() && iter.key()==cores.at(i).moduleId){
                                     if(iter.value().groupList.contains(cores.at(i))) {
@@ -1142,7 +1173,7 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
                 }
             }
             if(!exGroup&&!checked){
-                //создать группу и добавить объект
+                //СЃРѕР·РґР°С‚СЊ РіСЂСѓРїРїСѓ Рё РґРѕР±Р°РІРёС‚СЊ РѕР±СЉРµРєС‚
                 PsevdoGroup grStruct;
                 grStruct.num=num;
                 num++;
@@ -1164,16 +1195,17 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
  int AntipBindingWithGroups(QList<myTreeNode> &currentBranch, QList<myTreeNode> &optSolution, double reversCurSol,double curDoubleSol, double &optDoubleSol,
                   const ObjectIdList partsToBind, ObjectIdList Bounded,const QList<CoreId> &cores,Schedule* shed, int iter,
                             QMultiHash<ObjectId,Group> &groups,const QMultiMap<ObjectId, CoreId> &extraConstr,
-                            QMap<ObjectId, CoreId> &fixedParts, const QMap<ObjectId, double> &moduleThrConstr){
-     QList<myTreeNode> lowerSolution(currentBranch);// нижняя граница ( изначально в нее также добавляются все узлы текущего решения)
-     double upperBound=0;// число решения верхней границы
-     double lowerBound=curDoubleSol;// число решения нижней границы( в него также входит число текущего решения)
+                            QMap<ObjectId, CoreId> &fixedParts, const QMap<ObjectId, double> &moduleThrConstr,
+                            const QMultiMap<ObjectId, QSet<ObjectId>> &notTogether){
+     QList<myTreeNode> lowerSolution(currentBranch);//РЅРёР¶РЅСЏСЏ РіСЂР°РЅРёС†Р° ( РёР·РЅР°С‡Р°Р»СЊРЅРѕ РІ РЅРµРµ С‚Р°РєР¶Рµ РґРѕР±Р°РІР»СЏСЋС‚СЃСЏ РІСЃРµ СѓР·Р»С‹ С‚РµРєСѓС‰РµРіРѕ СЂРµС€РµРЅРёСЏ)
+     double upperBound=0;// С‡РёСЃР»Рѕ СЂРµС€РµРЅРёСЏ РІРµСЂС…РЅРµР№ РіСЂР°РЅРёС†С‹
+     double lowerBound=curDoubleSol;// С‡РёСЃР»Рѕ СЂРµС€РµРЅРёСЏ РЅРёР¶РЅРµР№ РіСЂР°РЅРёС†С‹( РІ РЅРµРіРѕ С‚Р°РєР¶Рµ РІС…РѕРґРёС‚ С‡РёСЃР»Рѕ С‚РµРєСѓС‰РµРіРѕ СЂРµС€РµРЅРёСЏ)
      if(MaxPosLoad-optDoubleSol>=reversCurSol){
          bool groupFlags[groups.values().length()];
          for(int l=0;l<groups.values().length() ;l++){
              groupFlags[l]=false;
          }
-         if(iter == partsToBind.length()){//достигли низа ветки --построили какое-то решение, проверим насколько оно хорошо
+         if(iter == partsToBind.length()){//РґРѕСЃС‚РёРіР»Рё РЅРёР·Р° РІРµС‚РєРё --РїРѕСЃС‚СЂРѕРёР»Рё РєР°РєРѕРµ-С‚Рѕ СЂРµС€РµРЅРёРµ, РїСЂРѕРІРµСЂРёРј РЅР°СЃРєРѕР»СЊРєРѕ РѕРЅРѕ С…РѕСЂРѕС€Рѕ
              QMap <ObjectId, double> mesDur ;
              QMultiMap<ObjectId, CoreId> parts;
              QMap<ObjectId, double> mesConstr;
@@ -1187,12 +1219,12 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
              return 1;
          }
      //qDebug()<<iter;
-         upperBound=UpperBoundCounting(currentBranch,partsToBind,Bounded, shed);//подсчет верхней границы-- проверка отсечения
+         upperBound=UpperBoundCounting(currentBranch,partsToBind,Bounded, shed);//РїРѕРґСЃС‡РµС‚ РІРµСЂС…РЅРµР№ РіСЂР°РЅРёС†С‹-- РїСЂРѕРІРµСЂРєР° РѕС‚СЃРµС‡РµРЅРёСЏ
          if(upperBound<=optDoubleSol && optDoubleSol>0.0){
              return 0;
          }
-         lowerBound=lowerBoundCounting(lowerSolution,lowerBound,partsToBind,Bounded, shed, extraConstr, fixedParts, moduleThrConstr);//подсчет нижней границы
-         if(lowerBound>optDoubleSol&& lowerSolution.count()==partsToBind.length()) {//проверка на оптимальность
+         lowerBound=lowerBoundCounting(lowerSolution,lowerBound,partsToBind,Bounded, shed, extraConstr, fixedParts, moduleThrConstr, notTogether);//РїРѕРґСЃС‡РµС‚ РЅРёР¶РЅРµР№ РіСЂР°РЅРёС†С‹
+         if(lowerBound>optDoubleSol&& lowerSolution.count()==partsToBind.length()) {//РїСЂРѕРІРµСЂРєР° РЅР° РѕРїС‚РёРјР°Р»СЊРЅРѕСЃС‚СЊ
              optDoubleSol=lowerBound;
              optSolution.clear();
              foreach (myTreeNode t, lowerSolution) {
@@ -1202,10 +1234,10 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
          if(optDoubleSol==MaxPosLoad){
              return 1;
          }
-      // добавим раздел с индексом iter+1 в список распределенных
+      // РґРѕР±Р°РІРёРј СЂР°Р·РґРµР» СЃ РёРЅРґРµРєСЃРѕРј iter+1 РІ СЃРїРёСЃРѕРє СЂР°СЃРїСЂРµРґРµР»РµРЅРЅС‹С…
          //Bounded.push_back(partsToBind[iter+1]);
          Bounded.push_back(partsToBind.at(iter));//+1
-         //для каждого доступного ядра для следующего раздела
+         //РґР»СЏ РєР°Р¶РґРѕРіРѕ РґРѕСЃС‚СѓРїРЅРѕРіРѕ СЏРґСЂР° РґР»СЏ СЃР»РµРґСѓСЋС‰РµРіРѕ СЂР°Р·РґРµР»Р°
 
          foreach(CoreId c, shed->data()->coresForPartition(partsToBind[iter])){//+1
 
@@ -1222,6 +1254,24 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
                  }
                  pe++;
              }
+             bool togetherFlag = false;
+             QMultiMap<ObjectId, QSet<ObjectId>>::const_iterator ne = notTogether.find(partsToBind[iter]);
+             while (ne!=notTogether.end() && ne.key() == partsToBind[iter]){
+                 QSet<ObjectId> prohibitedParts = ne.value();
+                 int prohibitedCount = 0;
+                 for (int sol = 0; sol < currentBranch.size(); sol++){
+                     if(currentBranch.at(sol).mCore == c && prohibitedParts.contains(currentBranch.at(sol).mPart)){
+                         prohibitedCount++;
+                     }
+                 }
+                 //means that one of the prohibition is violated -> we can not assign this part on this core
+                 if (prohibitedCount == prohibitedParts.size() ){
+                     togetherFlag = true;
+                     break;
+                 }
+                 ne++;
+             }
+             if(togetherFlag) continue;
              if (extra) continue;
              bool checked = false;
              bool isThrought = countEndThroughtput(currentBranch, c, partsToBind[iter], shed->data(), moduleThrConstr);
@@ -1233,17 +1283,17 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
                         double loadCur = curLoad(currentBranch, c, shed->data())+ partLoad[c.coreNum][partsToBind[iter].getId()];
                         double mcl = shed->constraints().maxCoreLoad.value(c, 1.0);
 
-                        //если в этом ядре еще есть место
+                        //РµСЃР»Рё РІ СЌС‚РѕРј СЏРґСЂРµ РµС‰Рµ РµСЃС‚СЊ РјРµСЃС‚Рѕ
 
                         if((isThrought) && (loadCur<=mcl)){
                             iterat.value().groupList.removeOne(c);
-                            //назначим следующий раздел в это ядро,
+                            //РЅР°Р·РЅР°С‡РёРј СЃР»РµРґСѓСЋС‰РёР№ СЂР°Р·РґРµР» РІ СЌС‚Рѕ СЏРґСЂРѕ,
 
                            // Bounded.push_back(partsToBind[iter+1].ObjectId);
                             myTreeNode temp(partsToBind.at(iter),c);//+1
                             currentBranch.push_back(temp);
 
-                            //добавим в текущее решение связи, котрые дает этот раздел
+                            //РґРѕР±Р°РІРёРј РІ С‚РµРєСѓС‰РµРµ СЂРµС€РµРЅРёРµ СЃРІСЏР·Рё, РєРѕС‚СЂС‹Рµ РґР°РµС‚ СЌС‚РѕС‚ СЂР°Р·РґРµР»
                             double a=addLinks(currentBranch, temp, shed->data());
                             double b=addTime(currentBranch, temp, shed->data());
 
@@ -1251,14 +1301,14 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
                             reversCurSol+=b;
 
 
-                            //запустим рекурсию с текущим решением, оптимальным, набором разделов, распределенных разделов, набором ядер,
-                            // расписанием для данных и ограничений, и номером раздела только что распределенного
-                            int f= AntipBindingWithGroups(currentBranch,optSolution,reversCurSol,curDoubleSol,optDoubleSol, partsToBind,Bounded,cores,shed,iter+1,groups, extraConstr, fixedParts,moduleThrConstr);
+                            //Р·Р°РїСѓСЃС‚РёРј СЂРµРєСѓСЂСЃРёСЋ СЃ С‚РµРєСѓС‰РёРј СЂРµС€РµРЅРёРµРј, РѕРїС‚РёРјР°Р»СЊРЅС‹Рј, РЅР°Р±РѕСЂРѕРј СЂР°Р·РґРµР»РѕРІ, СЂР°СЃРїСЂРµРґРµР»РµРЅРЅС‹С… СЂР°Р·РґРµР»РѕРІ, РЅР°Р±РѕСЂРѕРј СЏРґРµСЂ,
+                            // СЂР°СЃРїРёСЃР°РЅРёРµРј РґР»СЏ РґР°РЅРЅС‹С… Рё РѕРіСЂР°РЅРёС‡РµРЅРёР№, Рё РЅРѕРјРµСЂРѕРј СЂР°Р·РґРµР»Р° С‚РѕР»СЊРєРѕ С‡С‚Рѕ СЂР°СЃРїСЂРµРґРµР»РµРЅРЅРѕРіРѕ
+                            int f= AntipBindingWithGroups(currentBranch,optSolution,reversCurSol,curDoubleSol,optDoubleSol, partsToBind,Bounded,cores,shed,iter+1,groups, extraConstr, fixedParts,moduleThrConstr, notTogether);
 
-                            //уберем этот раздел из списка распределенных и уберем этот раздел из этого ядра
+                            //СѓР±РµСЂРµРј СЌС‚РѕС‚ СЂР°Р·РґРµР» РёР· СЃРїРёСЃРєР° СЂР°СЃРїСЂРµРґРµР»РµРЅРЅС‹С… Рё СѓР±РµСЂРµРј СЌС‚РѕС‚ СЂР°Р·РґРµР» РёР· СЌС‚РѕРіРѕ СЏРґСЂР°
                             currentBranch.pop_back();
 
-                            // уберем связь данного раздела
+                            // СѓР±РµСЂРµРј СЃРІСЏР·СЊ РґР°РЅРЅРѕРіРѕ СЂР°Р·РґРµР»Р°
 
                             curDoubleSol-=a;
                             reversCurSol-=b;
@@ -1281,17 +1331,17 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
                  double loadCur = curLoad(currentBranch, c, shed->data())+ partLoad[c.coreNum][partsToBind[iter].getId()];
                  double mcl = shed->constraints().maxCoreLoad.value(c, 1.0);
 
-                 //если в этом ядре еще есть место
+                 //РµСЃР»Рё РІ СЌС‚РѕРј СЏРґСЂРµ РµС‰Рµ РµСЃС‚СЊ РјРµСЃС‚Рѕ
 
                  if((isThrought) && (loadCur<=mcl)){
 
-                     //назначим следующий раздел в это ядро,
+                     //РЅР°Р·РЅР°С‡РёРј СЃР»РµРґСѓСЋС‰РёР№ СЂР°Р·РґРµР» РІ СЌС‚Рѕ СЏРґСЂРѕ,
 
                     // Bounded.push_back(partsToBind[iter+1].ObjectId);
                      myTreeNode temp(partsToBind.at(iter),c);//+1
                      currentBranch.push_back(temp);
 
-                     //добавим в текущее решение связи, котрые дает этот раздел
+                     //РґРѕР±Р°РІРёРј РІ С‚РµРєСѓС‰РµРµ СЂРµС€РµРЅРёРµ СЃРІСЏР·Рё, РєРѕС‚СЂС‹Рµ РґР°РµС‚ СЌС‚РѕС‚ СЂР°Р·РґРµР»
 
                      double a=addLinks(currentBranch, temp, shed->data());
                      double b=addTime(currentBranch, temp, shed->data());
@@ -1299,14 +1349,14 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
                      curDoubleSol+=a;
                      reversCurSol+=b;
 
-                     //запустим рекурсию с текущим решением, оптимальным, набором разделов, распределенных разделов, набором ядер,
-                     // расписанием для данных и ограничений, и номером раздела только что распределенного
-                     int f= AntipBindingWithGroups(currentBranch,optSolution,reversCurSol,curDoubleSol,optDoubleSol, partsToBind,Bounded,cores,shed,iter+1,groups, extraConstr, fixedParts, moduleThrConstr);
+                     //Р·Р°РїСѓСЃС‚РёРј СЂРµРєСѓСЂСЃРёСЋ СЃ С‚РµРєСѓС‰РёРј СЂРµС€РµРЅРёРµРј, РѕРїС‚РёРјР°Р»СЊРЅС‹Рј, РЅР°Р±РѕСЂРѕРј СЂР°Р·РґРµР»РѕРІ, СЂР°СЃРїСЂРµРґРµР»РµРЅРЅС‹С… СЂР°Р·РґРµР»РѕРІ, РЅР°Р±РѕСЂРѕРј СЏРґРµСЂ,
+                     // СЂР°СЃРїРёСЃР°РЅРёРµРј РґР»СЏ РґР°РЅРЅС‹С… Рё РѕРіСЂР°РЅРёС‡РµРЅРёР№, Рё РЅРѕРјРµСЂРѕРј СЂР°Р·РґРµР»Р° С‚РѕР»СЊРєРѕ С‡С‚Рѕ СЂР°СЃРїСЂРµРґРµР»РµРЅРЅРѕРіРѕ
+                     int f= AntipBindingWithGroups(currentBranch,optSolution,reversCurSol,curDoubleSol,optDoubleSol, partsToBind,Bounded,cores,shed,iter+1,groups, extraConstr, fixedParts, moduleThrConstr, notTogether);
 
-                     //уберем этот раздел из списка распределенных и уберем этот раздел из этого ядра
+                     //СѓР±РµСЂРµРј СЌС‚РѕС‚ СЂР°Р·РґРµР» РёР· СЃРїРёСЃРєР° СЂР°СЃРїСЂРµРґРµР»РµРЅРЅС‹С… Рё СѓР±РµСЂРµРј СЌС‚РѕС‚ СЂР°Р·РґРµР» РёР· СЌС‚РѕРіРѕ СЏРґСЂР°
                      currentBranch.pop_back();
 
-                     // уберем связь данного раздела
+                     // СѓР±РµСЂРµРј СЃРІСЏР·СЊ РґР°РЅРЅРѕРіРѕ СЂР°Р·РґРµР»Р°
                      curDoubleSol-=a;
                      reversCurSol-=b;
                      //Bounded.pop_back();
@@ -1322,24 +1372,24 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
  }
 
 //****
-//* подсчет верхней границы через минимум
-//* можно раскомментировать и параллельно вести подсчет обычной границы
-//* возможно поможет отследить неверные отсечения
-//* но сначало надо исследовать просто на эффективность
+//* РћРќР”РЇР’Р•Р  Р‘Р•РџРЈРњР•Р Р¦РџР®РњРҐР–РЁ Р’Р•РџР•Р“ Р›РҐРњРҐР›РЎР›
+//* Р›РќР¤РњРќ РџР®РЇР™РќР›Р›Р•РњР РҐРџРќР‘Р®Р Р­ РҐ РћР®РџР®РљРљР•РљР­РњРќ Р‘Р•РЇР РҐ РћРќР”РЇР’Р•Р  РќРђРЁР’РњРќР Р¦РџР®РњРҐР–РЁ
+//* Р‘РќР“Р›РќР¤РњРќ РћРќР›РќР¤Р•Р  РќР РЇРљР•Р”РҐР Р­ РњР•Р‘Р•РџРњРЁР• РќР РЇР•Р’Р•РњРҐРЄ
+//* РњРќ РЇРњР®Р’Р®РљРќ РњР®Р”Рќ РҐРЇРЇРљР•Р”РќР‘Р®Р Р­ РћРџРќРЇР Рќ РњР® Р©РўРўР•Р™Р РҐР‘РњРќРЇР Р­
 //****
 // int AntipBindingWithGroupsUpdate(QList<myTreeNode> &currentBranch, QList<myTreeNode> &optSolution, double reversCurSol,double curDoubleSol, double &optDoubleSol,
 //                  const ObjectIdList partsToBind, ObjectIdList Bounded,const QList<CoreId> &cores,Schedule* shed, int iter,
 //                            QMultiHash<ObjectId,Group> &groups){
-//     QList<myTreeNode> lowerSolution(currentBranch);// нижняя граница ( изначально в нее также добавляются все узлы текущего решения)
-//     double upperBoundUpdate=0;// число решения верхней границы
+//     QList<myTreeNode> lowerSolution(currentBranch);// РњРҐР¤РњРЄРЄ Р¦РџР®РњРҐР–Р® ( РҐР“РњР®Р’Р®РљР­РњРќ Р‘ РњР•Р• Р Р®Р™Р¤Р• Р”РќРђР®Р‘РљРЄР§Р РЇРЄ Р‘РЇР• РЎР“РљРЁ Р Р•Р™РЎР«Р•Р¦Рќ РџР•Р¬Р•РњРҐРЄ)
+//     double upperBoundUpdate=0;// Р’РҐРЇРљРќ РџР•Р¬Р•РњРҐРЄ Р‘Р•РџРЈРњР•Р Р¦РџР®РњРҐР–РЁ
 //     //double upperBound=0;
-//     double lowerBound=curDoubleSol;// число решения нижней границы( в него также входит число текущего решения)
+//     double lowerBound=curDoubleSol;// Р’РҐРЇРљРќ РџР•Р¬Р•РњРҐРЄ РњРҐР¤РњР•Р Р¦РџР®РњРҐР–РЁ( Р‘ РњР•Р¦Рќ Р Р®Р™Р¤Р• Р‘РЈРќР”РҐР  Р’РҐРЇРљРќ Р Р•Р™РЎР«Р•Р¦Рќ РџР•Р¬Р•РњРҐРЄ)
 //     if(MaxPosLoad-optDoubleSol>=reversCurSol){
 //         bool groupFlags[groups.values().length()];
 //         for(int l=0;l<groups.values().length() ;l++){
 //             groupFlags[l]=false;
 //         }
-//         if(iter == partsToBind.length()){//достигли низа ветки --построили какое-то решение, проверим насколько оно хорошо
+//         if(iter == partsToBind.length()){//Р”РќРЇР РҐР¦РљРҐ РњРҐР“Р® Р‘Р•Р Р™РҐ --РћРќРЇР РџРќРҐРљРҐ Р™Р®Р™РќР•-Р Рќ РџР•Р¬Р•РњРҐР•, РћРџРќР‘Р•РџРҐР› РњР®РЇР™РќРљР­Р™Рќ РќРњРќ РЈРќРџРќР¬Рќ
 //             if(curDoubleSol>=optDoubleSol) {
 //                 optDoubleSol=curDoubleSol;
 //                 optSolution.clear();
@@ -1353,7 +1403,7 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
 //         }
 //     //qDebug()<<iter;
 //        // upperBound=UpperBoundCounting(currentBranch,partsToBind,Bounded, shed);
-//         upperBoundUpdate=UpperBoundCountingUpdate(currentBranch,partsToBind,Bounded, shed);//подсчет верхней границы-- проверка отсечения
+//         upperBoundUpdate=UpperBoundCountingUpdate(currentBranch,partsToBind,Bounded, shed);//РћРќР”РЇР’Р•Р  Р‘Р•РџРЈРњР•Р Р¦РџР®РњРҐР–РЁ-- РћРџРќР‘Р•РџР™Р® РќР РЇР•Р’Р•РњРҐРЄ
 //         //newBoundStream<<iter<<" update "<<upperBoundUpdate<<" not update "<<upperBound<<"\n";
 //         //qDebug()<<iter<<" update "<<upperBoundUpdate<<" not update "<<upperBound<<"\n";
 //         if(upperBoundUpdate<=optDoubleSol){
@@ -1366,8 +1416,8 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
 //             return 0;
 //         }
 //         QMultiMap<ObjectId, CoreId> ep;
-//         lowerBound=lowerBoundCounting(lowerSolution,lowerBound,partsToBind,Bounded, shed, ep);//подсчет нижней границы
-//         if(lowerBound>optDoubleSol&& lowerSolution.count()==partsToBind.length()) {//проверка на оптимальность
+//         lowerBound=lowerBoundCounting(lowerSolution,lowerBound,partsToBind,Bounded, shed, ep);//РћРќР”РЇР’Р•Р  РњРҐР¤РњР•Р Р¦РџР®РњРҐР–РЁ
+//         if(lowerBound>optDoubleSol&& lowerSolution.count()==partsToBind.length()) {//РћРџРќР‘Р•РџР™Р® РњР® РќРћР РҐР›Р®РљР­РњРќРЇР Р­
 //             optDoubleSol=lowerBound;
 //             optSolution.clear();
 //             //newBoundStream<<"opt solution by lower bound got";
@@ -1379,10 +1429,10 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
 //         if(optDoubleSol==MaxPosLoad){
 //             return 1;
 //         }
-//      // добавим раздел с индексом iter+1 в список распределенных
+//      // Р”РќРђР®Р‘РҐР› РџР®Р“Р”Р•Рљ РЇ РҐРњР”Р•Р™РЇРќР› iter+1 Р‘ РЇРћРҐРЇРќР™ РџР®РЇРћРџР•Р”Р•РљР•РњРњРЁРЈ
 //         //Bounded.push_back(partsToBind[iter+1]);
 //         Bounded.push_back(partsToBind.at(iter));//+1
-//         //для каждого доступного ядра для следующего раздела
+//         //Р”РљРЄ Р™Р®Р¤Р”РќР¦Рќ Р”РќРЇР РЎРћРњРќР¦Рќ РЄР”РџР® Р”РљРЄ РЇРљР•Р”РЎР§Р«Р•Р¦Рќ РџР®Р“Р”Р•РљР®
 
 //         foreach(CoreId c, shed->data()->coresForPartition(partsToBind[iter])){//+1
 //             bool checked = false;
@@ -1394,31 +1444,31 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
 //                        double loadCur = curLoad(currentBranch, c, shed->data())+ partLoad[c.coreNum][partsToBind[iter].getId()];
 //                        double mcl = shed->constraints().maxCoreLoad.value(c, 1.0);
 
-//                        //если в этом ядре еще есть место
+//                        //Р•РЇРљРҐ Р‘ Р©Р РќР› РЄР”РџР• Р•Р«Р• Р•РЇР Р­ Р›Р•РЇР Рќ
 
 //                        if((isThrought) && (loadCur<=mcl)){
 //                            iterat.value().groupList.removeOne(c);
-//                            //назначим следующий раздел в это ядро,
+//                            //РњР®Р“РњР®Р’РҐР› РЇРљР•Р”РЎР§Р«РҐР РџР®Р“Р”Р•Рљ Р‘ Р©Р Рќ РЄР”РџРќ,
 
 //                           // Bounded.push_back(partsToBind[iter+1].ObjectId);
 //                            myTreeNode temp(partsToBind.at(iter),c);//+1
 //                            currentBranch.push_back(temp);
 
-//                            //добавим в текущее решение связи, котрые дает этот раздел
+//                            //Р”РќРђР®Р‘РҐР› Р‘ Р Р•Р™РЎР«Р•Р• РџР•Р¬Р•РњРҐР• РЇР‘РЄР“РҐ, Р™РќР РџРЁР• Р”Р®Р•Р  Р©Р РќР  РџР®Р“Р”Р•Рљ
 //                            double a=addLinks(currentBranch, temp, shed->data());
 //                            double b=addTime(currentBranch, temp, shed->data());
 
 //                            curDoubleSol+=a;
 //                            reversCurSol+=b;
 
-//                            //запустим рекурсию с текущим решением, оптимальным, набором разделов, распределенных разделов, набором ядер,
-//                            // расписанием для данных и ограничений, и номером раздела только что распределенного
+//                            //Р“Р®РћРЎРЇР РҐР› РџР•Р™РЎРџРЇРҐР§ РЇ Р Р•Р™РЎР«РҐР› РџР•Р¬Р•РњРҐР•Р›, РќРћР РҐР›Р®РљР­РњРЁР›, РњР®РђРќРџРќР› РџР®Р“Р”Р•РљРќР‘, РџР®РЇРћРџР•Р”Р•РљР•РњРњРЁРЈ РџР®Р“Р”Р•РљРќР‘, РњР®РђРќРџРќР› РЄР”Р•Рџ,
+//                            // РџР®РЇРћРҐРЇР®РњРҐР•Р› Р”РљРЄ Р”Р®РњРњРЁРЈ РҐ РќР¦РџР®РњРҐР’Р•РњРҐР, РҐ РњРќР›Р•РџРќР› РџР®Р“Р”Р•РљР® Р РќРљР­Р™Рќ Р’Р Рќ РџР®РЇРћРџР•Р”Р•РљР•РњРњРќР¦Рќ
 //                            int f= AntipBindingWithGroupsUpdate(currentBranch,optSolution,reversCurSol,curDoubleSol,optDoubleSol, partsToBind,Bounded,cores,shed,iter+1,groups);
 
-//                            //уберем этот раздел из списка распределенных и уберем этот раздел из этого ядра
+//                            //РЎРђР•РџР•Р› Р©Р РќР  РџР®Р“Р”Р•Рљ РҐР“ РЇРћРҐРЇР™Р® РџР®РЇРћРџР•Р”Р•РљР•РњРњРЁРЈ РҐ РЎРђР•РџР•Р› Р©Р РќР  РџР®Р“Р”Р•Рљ РҐР“ Р©Р РќР¦Рќ РЄР”РџР®
 //                            currentBranch.pop_back();
 
-//                            // уберем связь данного раздела
+//                            // РЎРђР•РџР•Р› РЇР‘РЄР“Р­ Р”Р®РњРњРќР¦Рќ РџР®Р“Р”Р•РљР®
 
 //                            curDoubleSol-=a;
 //                            reversCurSol-=b;
@@ -1441,17 +1491,17 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
 //                 double loadCur = curLoad(currentBranch, c, shed->data())+ partLoad[c.coreNum][partsToBind[iter].getId()];
 //                 double mcl = shed->constraints().maxCoreLoad.value(c, 1.0);
 
-//                 //если в этом ядре еще есть место
+//                 //Р•РЇРљРҐ Р‘ Р©Р РќР› РЄР”РџР• Р•Р«Р• Р•РЇР Р­ Р›Р•РЇР Рќ
 
 //                 if((isThrought) && loadCur<=mcl){
 
-//                     //назначим следующий раздел в это ядро,
+//                     //РњР®Р“РњР®Р’РҐР› РЇРљР•Р”РЎР§Р«РҐР РџР®Р“Р”Р•Рљ Р‘ Р©Р Рќ РЄР”РџРќ,
 
 //                    // Bounded.push_back(partsToBind[iter+1].ObjectId);
 //                     myTreeNode temp(partsToBind.at(iter),c);//+1
 //                     currentBranch.push_back(temp);
 
-//                     //добавим в текущее решение связи, котрые дает этот раздел
+//                     //Р”РќРђР®Р‘РҐР› Р‘ Р Р•Р™РЎР«Р•Р• РџР•Р¬Р•РњРҐР• РЇР‘РЄР“РҐ, Р™РќР РџРЁР• Р”Р®Р•Р  Р©Р РќР  РџР®Р“Р”Р•Рљ
 
 //                     double a=addLinks(currentBranch, temp, shed->data());
 //                     double b=addTime(currentBranch, temp, shed->data());
@@ -1459,14 +1509,14 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
 //                     curDoubleSol+=a;
 //                     reversCurSol+=b;
 
-//                     //запустим рекурсию с текущим решением, оптимальным, набором разделов, распределенных разделов, набором ядер,
-//                     // расписанием для данных и ограничений, и номером раздела только что распределенного
+//                     //Р“Р®РћРЎРЇР РҐР› РџР•Р™РЎРџРЇРҐР§ РЇ Р Р•Р™РЎР«РҐР› РџР•Р¬Р•РњРҐР•Р›, РќРћР РҐР›Р®РљР­РњРЁР›, РњР®РђРќРџРќР› РџР®Р“Р”Р•РљРќР‘, РџР®РЇРћРџР•Р”Р•РљР•РњРњРЁРЈ РџР®Р“Р”Р•РљРќР‘, РњР®РђРќРџРќР› РЄР”Р•Рџ,
+//                     // РџР®РЇРћРҐРЇР®РњРҐР•Р› Р”РљРЄ Р”Р®РњРњРЁРЈ РҐ РќР¦РџР®РњРҐР’Р•РњРҐР, РҐ РњРќР›Р•РџРќР› РџР®Р“Р”Р•РљР® Р РќРљР­Р™Рќ Р’Р Рќ РџР®РЇРћРџР•Р”Р•РљР•РњРњРќР¦Рќ
 //                     int f= AntipBindingWithGroupsUpdate(currentBranch,optSolution,reversCurSol,curDoubleSol,optDoubleSol, partsToBind,Bounded,cores,shed,iter+1,groups);
 
-//                     //уберем этот раздел из списка распределенных и уберем этот раздел из этого ядра
+//                     //РЎРђР•РџР•Р› Р©Р РќР  РџР®Р“Р”Р•Рљ РҐР“ РЇРћРҐРЇР™Р® РџР®РЇРћРџР•Р”Р•РљР•РњРњРЁРЈ РҐ РЎРђР•РџР•Р› Р©Р РќР  РџР®Р“Р”Р•Рљ РҐР“ Р©Р РќР¦Рќ РЄР”РџР®
 //                     currentBranch.pop_back();
 
-//                     // уберем связь данного раздела
+//                     // РЎРђР•РџР•Р› РЇР‘РЄР“Р­ Р”Р®РњРњРќР¦Рќ РџР®Р“Р”Р•РљР®
 //                     curDoubleSol-=a;
 //                     reversCurSol-=b;
 //                     //Bounded.pop_back();
@@ -1495,15 +1545,15 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
 // int AntipBindingWithPsevdoGroups(QList<myTreeNode> &currentBranch, QList<myTreeNode> &optSolution, double reversCurSol,double curDoubleSol, double &optDoubleSol,
 //                  const ObjectIdList partsToBind, ObjectIdList Bounded,const QList<CoreId> &cores,Schedule* shed, int iter,
 //                            QMultiHash<ObjectId,PsevdoGroup> &groups){
-//     QList<myTreeNode> lowerSolution(currentBranch);// нижняя граница ( изначально в нее также добавляются все узлы текущего решения)
-//     double upperBound=0;// число решения верхней границы
-//     double lowerBound=curDoubleSol;// число решения нижней границы( в него также входит число текущего решения)
+//     QList<myTreeNode> lowerSolution(currentBranch);// РњРҐР¤РњРЄРЄ Р¦РџР®РњРҐР–Р® ( РҐР“РњР®Р’Р®РљР­РњРќ Р‘ РњР•Р• Р Р®Р™Р¤Р• Р”РќРђР®Р‘РљРЄР§Р РЇРЄ Р‘РЇР• РЎР“РљРЁ Р Р•Р™РЎР«Р•Р¦Рќ РџР•Р¬Р•РњРҐРЄ)
+//     double upperBound=0;// Р’РҐРЇРљРќ РџР•Р¬Р•РњРҐРЄ Р‘Р•РџРЈРњР•Р Р¦РџР®РњРҐР–РЁ
+//     double lowerBound=curDoubleSol;// Р’РҐРЇРљРќ РџР•Р¬Р•РњРҐРЄ РњРҐР¤РњР•Р Р¦РџР®РњРҐР–РЁ( Р‘ РњР•Р¦Рќ Р Р®Р™Р¤Р• Р‘РЈРќР”РҐР  Р’РҐРЇРљРќ Р Р•Р™РЎР«Р•Р¦Рќ РџР•Р¬Р•РњРҐРЄ)
 //     if(MaxPosLoad-optDoubleSol>=reversCurSol){
 //         bool groupFlags[groups.values().length()];
 //         for(int l=0;l<groups.values().length() ;l++){
 //             groupFlags[l]=false;
 //         }
-//         if(iter == partsToBind.length()){//достигли низа ветки --построили какое-то решение, проверим насколько оно хорошо
+//         if(iter == partsToBind.length()){//Р”РќРЇР РҐР¦РљРҐ РњРҐР“Р® Р‘Р•Р Р™РҐ --РћРќРЇР РџРќРҐРљРҐ Р™Р®Р™РќР•-Р Рќ РџР•Р¬Р•РњРҐР•, РћРџРќР‘Р•РџРҐР› РњР®РЇР™РќРљР­Р™Рќ РќРњРќ РЈРќРџРќР¬Рќ
 //             if(curDoubleSol>=optDoubleSol) {
 //                 optDoubleSol=curDoubleSol;
 //                 optSolution.clear();
@@ -1514,14 +1564,14 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
 //             return 1;
 //         }
 //     //qDebug()<<iter;
-//         upperBound=UpperBoundCounting(currentBranch,partsToBind,Bounded, shed);//подсчет верхней границы-- проверка отсечения
+//         upperBound=UpperBoundCounting(currentBranch,partsToBind,Bounded, shed);//РћРќР”РЇР’Р•Р  Р‘Р•РџРЈРњР•Р Р¦РџР®РњРҐР–РЁ-- РћРџРќР‘Р•РџР™Р® РќР РЇР•Р’Р•РњРҐРЄ
 //         if(upperBound<=optDoubleSol){
 //             return 0;
 //         }
 
 //         QMultiMap<ObjectId, CoreId> ep;
-//         lowerBound=lowerBoundCounting(lowerSolution,lowerBound,partsToBind,Bounded, shed, ep);//подсчет нижней границы
-//         if(lowerBound>optDoubleSol&& lowerSolution.count()==partsToBind.length()) {//проверка на оптимальность
+//         lowerBound=lowerBoundCounting(lowerSolution,lowerBound,partsToBind,Bounded, shed, ep);//РћРќР”РЇР’Р•Р  РњРҐР¤РњР•Р Р¦РџР®РњРҐР–РЁ
+//         if(lowerBound>optDoubleSol&& lowerSolution.count()==partsToBind.length()) {//РћРџРќР‘Р•РџР™Р® РњР® РќРћР РҐР›Р®РљР­РњРќРЇР Р­
 //             optDoubleSol=lowerBound;
 //             optSolution.clear();
 //             foreach (myTreeNode t, lowerSolution) {
@@ -1531,10 +1581,10 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
 //         if(optDoubleSol==MaxPosLoad){
 //             return 1;
 //         }
-//      // добавим раздел с индексом iter+1 в список распределенных
+//      // Р”РќРђР®Р‘РҐР› РџР®Р“Р”Р•Рљ РЇ РҐРњР”Р•Р™РЇРќР› iter+1 Р‘ РЇРћРҐРЇРќР™ РџР®РЇРћРџР•Р”Р•РљР•РњРњРЁРЈ
 //         //Bounded.push_back(partsToBind[iter+1]);
 //         Bounded.push_back(partsToBind.at(iter));//+1
-//         //для каждого доступного ядра для следующего раздела
+//         //Р”РљРЄ Р™Р®Р¤Р”РќР¦Рќ Р”РќРЇР РЎРћРњРќР¦Рќ РЄР”РџР® Р”РљРЄ РЇРљР•Р”РЎР§Р«Р•Р¦Рќ РџР®Р“Р”Р•РљР®
 
 //         foreach(CoreId c, shed->data()->coresForPartition(partsToBind[iter])){//+1
 //             bool checked = false;
@@ -1546,32 +1596,32 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
 //                        double loadCur = curLoad(currentBranch, c, shed->data())+ partLoad[c.coreNum][partsToBind[iter].getId()];
 //                        double mcl = iterat.value().groupVol;
 
-//                        //если в этом ядре еще есть место
+//                        //Р•РЇРљРҐ Р‘ Р©Р РќР› РЄР”РџР• Р•Р«Р• Р•РЇР Р­ Р›Р•РЇР Рќ
 
 //                        if(loadCur<=mcl){
 //                            iterat.value().groupList.removeOne(c);
 //                            recountMinVol(iterat.value(),shed);
-//                            //назначим следующий раздел в это ядро,
+//                            //РњР®Р“РњР®Р’РҐР› РЇРљР•Р”РЎР§Р«РҐР РџР®Р“Р”Р•Рљ Р‘ Р©Р Рќ РЄР”РџРќ,
 
 //                           // Bounded.push_back(partsToBind[iter+1].ObjectId);
 //                            myTreeNode temp(partsToBind.at(iter),c);//+1
 //                            currentBranch.push_back(temp);
 
-//                            //добавим в текущее решение связи, котрые дает этот раздел
+//                            //Р”РќРђР®Р‘РҐР› Р‘ Р Р•Р™РЎР«Р•Р• РџР•Р¬Р•РњРҐР• РЇР‘РЄР“РҐ, Р™РќР РџРЁР• Р”Р®Р•Р  Р©Р РќР  РџР®Р“Р”Р•Рљ
 //                            double a=addLinks(currentBranch, temp, shed->data());
 //                            double b=addTime(currentBranch, temp, shed->data());
 
 //                            curDoubleSol+=a;
 //                            reversCurSol+=b;
 
-//                            //запустим рекурсию с текущим решением, оптимальным, набором разделов, распределенных разделов, набором ядер,
-//                            // расписанием для данных и ограничений, и номером раздела только что распределенного
+//                            //Р“Р®РћРЎРЇР РҐР› РџР•Р™РЎРџРЇРҐР§ РЇ Р Р•Р™РЎР«РҐР› РџР•Р¬Р•РњРҐР•Р›, РќРћР РҐР›Р®РљР­РњРЁР›, РњР®РђРќРџРќР› РџР®Р“Р”Р•РљРќР‘, РџР®РЇРћРџР•Р”Р•РљР•РњРњРЁРЈ РџР®Р“Р”Р•РљРќР‘, РњР®РђРќРџРќР› РЄР”Р•Рџ,
+//                            // РџР®РЇРћРҐРЇР®РњРҐР•Р› Р”РљРЄ Р”Р®РњРњРЁРЈ РҐ РќР¦РџР®РњРҐР’Р•РњРҐР, РҐ РњРќР›Р•РџРќР› РџР®Р“Р”Р•РљР® Р РќРљР­Р™Рќ Р’Р Рќ РџР®РЇРћРџР•Р”Р•РљР•РњРњРќР¦Рќ
 //                            int f= AntipBindingWithPsevdoGroups(currentBranch,optSolution,reversCurSol,curDoubleSol,optDoubleSol, partsToBind,Bounded,cores,shed,iter+1,groups);
 
-//                            //уберем этот раздел из списка распределенных и уберем этот раздел из этого ядра
+//                            //РЎРђР•РџР•Р› Р©Р РќР  РџР®Р“Р”Р•Рљ РҐР“ РЇРћРҐРЇР™Р® РџР®РЇРћРџР•Р”Р•РљР•РњРњРЁРЈ РҐ РЎРђР•РџР•Р› Р©Р РќР  РџР®Р“Р”Р•Рљ РҐР“ Р©Р РќР¦Рќ РЄР”РџР®
 //                            currentBranch.pop_back();
 
-//                            // уберем связь данного раздела
+//                            // РЎРђР•РџР•Р› РЇР‘РЄР“Р­ Р”Р®РњРњРќР¦Рќ РџР®Р“Р”Р•РљР®
 
 //                            curDoubleSol-=a;
 //                            reversCurSol-=b;
@@ -1595,17 +1645,17 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
 //                 double loadCur = curLoad(currentBranch, c, shed->data())+ partLoad[c.coreNum][partsToBind[iter].getId()];
 //                 double mcl = shed->constraints().maxCoreLoad.value(c, 1.0);
 
-//                 //если в этом ядре еще есть место
+//                 //Р•РЇРљРҐ Р‘ Р©Р РќР› РЄР”РџР• Р•Р«Р• Р•РЇР Р­ Р›Р•РЇР Рќ
 
 //                 if(loadCur<=mcl){
 
-//                     //назначим следующий раздел в это ядро,
+//                     //РњР®Р“РњР®Р’РҐР› РЇРљР•Р”РЎР§Р«РҐР РџР®Р“Р”Р•Рљ Р‘ Р©Р Рќ РЄР”РџРќ,
 
 //                    // Bounded.push_back(partsToBind[iter+1].ObjectId);
 //                     myTreeNode temp(partsToBind.at(iter),c);//+1
 //                     currentBranch.push_back(temp);
 
-//                     //добавим в текущее решение связи, котрые дает этот раздел
+//                     //Р”РќРђР®Р‘РҐР› Р‘ Р Р•Р™РЎР«Р•Р• РџР•Р¬Р•РњРҐР• РЇР‘РЄР“РҐ, Р™РќР РџРЁР• Р”Р®Р•Р  Р©Р РќР  РџР®Р“Р”Р•Рљ
 
 //                     double a=addLinks(currentBranch, temp, shed->data());
 //                     double b=addTime(currentBranch, temp, shed->data());
@@ -1613,14 +1663,14 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
 //                     curDoubleSol+=a;
 //                     reversCurSol+=b;
 
-//                     //запустим рекурсию с текущим решением, оптимальным, набором разделов, распределенных разделов, набором ядер,
-//                     // расписанием для данных и ограничений, и номером раздела только что распределенного
+//                     //Р“Р®РћРЎРЇР РҐР› РџР•Р™РЎРџРЇРҐР§ РЇ Р Р•Р™РЎР«РҐР› РџР•Р¬Р•РњРҐР•Р›, РќРћР РҐР›Р®РљР­РњРЁР›, РњР®РђРќРџРќР› РџР®Р“Р”Р•РљРќР‘, РџР®РЇРћРџР•Р”Р•РљР•РњРњРЁРЈ РџР®Р“Р”Р•РљРќР‘, РњР®РђРќРџРќР› РЄР”Р•Рџ,
+//                     // РџР®РЇРћРҐРЇР®РњРҐР•Р› Р”РљРЄ Р”Р®РњРњРЁРЈ РҐ РќР¦РџР®РњРҐР’Р•РњРҐР, РҐ РњРќР›Р•РџРќР› РџР®Р“Р”Р•РљР® Р РќРљР­Р™Рќ Р’Р Рќ РџР®РЇРћРџР•Р”Р•РљР•РњРњРќР¦Рќ
 //                     int f= AntipBindingWithPsevdoGroups(currentBranch,optSolution,reversCurSol,curDoubleSol,optDoubleSol, partsToBind,Bounded,cores,shed,iter+1,groups);
 
-//                     //уберем этот раздел из списка распределенных и уберем этот раздел из этого ядра
+//                     //РЎРђР•РџР•Р› Р©Р РќР  РџР®Р“Р”Р•Рљ РҐР“ РЇРћРҐРЇР™Р® РџР®РЇРћРџР•Р”Р•РљР•РњРњРЁРЈ РҐ РЎРђР•РџР•Р› Р©Р РќР  РџР®Р“Р”Р•Рљ РҐР“ Р©Р РќР¦Рќ РЄР”РџР®
 //                     currentBranch.pop_back();
 
-//                     // уберем связь данного раздела
+//                     // РЎРђР•РџР•Р› РЇР‘РЄР“Р­ Р”Р®РњРњРќР¦Рќ РџР®Р“Р”Р•РљР®
 //                     curDoubleSol-=a;
 //                     reversCurSol-=b;
 //                     //Bounded.pop_back();
@@ -1686,17 +1736,17 @@ bool BindAlgoBranchNB::makeBinding(Schedule* schedule)
     ProjectData::sortPartition(mPartsToBind);
     mPartsToBind = gredPartSort(mPartsToBind, mSchedule->data(), opt_flag, opt_index);
     //qDebug() << opt_flag << opt_index << mPartsToBind.size();
-    //qDebug() << "СЂР°Р·РјРµСЂРЅРѕСЃС‚СЊ (" << mPartsToBind.size() << "," << cores.size() << ")";
+    //qDebug() << "СЏв”ЂРїв•џРїР‡Рїв•ЄРїв•ЈСЏв”ЂРїТђРїв•¬СЏв”‚СЏв”ЊСЏв–„ (" << mPartsToBind.size() << "," << cores.size() << ")";
 
     qDebug() << "let the storm begin A New Bound";
    //Antip Start
 //    if (!newlog.open(QIODevice::WriteOnly | QIODevice::Text))
 //    {
-//        qDebug() << "Ошибка при открытии файла";
+//        qDebug() << "РЅР¬РҐРђР™Р® РћРџРҐ РќР Р™РџРЁР РҐРҐ РўР®РРљР®";
 //    }
     if (!oldlog.open(QIODevice::Append | QIODevice::Text))
     {
-        qDebug() << "Ошибка при открытии файла";
+        qDebug() << "РћС€РёР±РєР° РїСЂРё РѕС‚РєСЂС‹С‚РёРё С„Р°Р№Р»Р°";
     }
     QList<myTreeNode> CurList; // current solution list
     bool isSuccess = true;
@@ -1720,7 +1770,7 @@ bool BindAlgoBranchNB::makeBinding(Schedule* schedule)
     //initialize groups of identy cores
    oldBoundStream<<"grouping NEW Bound\n";
     QMultiHash<ObjectId,Group> coreGroups=initCoreGroups(cores,mSchedule, extraConstr);
-    int ant= AntipBindingWithGroups(CurList, mOpt,revers, CurLoadPart,mOptLoad,mPartsToBind, mBound,cores,mSchedule,iter, coreGroups, extraConstr, fixedParts, moduleThrConstr);
+    int ant= AntipBindingWithGroups(CurList, mOpt,revers, CurLoadPart,mOptLoad,mPartsToBind, mBound,cores,mSchedule,iter, coreGroups, extraConstr, fixedParts, moduleThrConstr,notTogether);
 //    oldBoundStream<<"PSEVDO grouping\n";
 //  QMultiHash<ObjectId,PsevdoGroup> coreGroups=initCorePsevdoGroups(cores,mSchedule);
 //  int ant= AntipBindingWithPsevdoGroups(CurList, mOpt,revers, CurLoadPart,mOptLoad,mPartsToBind, mBound,cores,mSchedule,iter, coreGroups );
@@ -1779,9 +1829,10 @@ bool BindAlgoBranchNB::makeBinding(Schedule* schedule)
 
 BindAlgoBranchNB::BindAlgoBranchNB(){}
 
-BindAlgoBranchNB::BindAlgoBranchNB(QMultiMap<ObjectId, CoreId> ec, QMap<ObjectId, CoreId> fixed, Schedule* shed){
+BindAlgoBranchNB::BindAlgoBranchNB(QMultiMap<ObjectId, CoreId> ec, QMultiMap<ObjectId, QSet<ObjectId>> nT, QMap<ObjectId, CoreId> fixed, Schedule* shed){
     extraConstr = QMultiMap<ObjectId, CoreId>(ec);
     fixedParts = QMap<ObjectId, CoreId> (fixed);
+    notTogether = QMultiMap<ObjectId, QSet<ObjectId>> (nT);
     QMap<ObjectId, double> mt;
     for(int i = 0; i < shed->data()->modules().size(); i++){
         mt.insert((shed->data()->modules().at(i))->id(), MaxThroughput);
@@ -1789,10 +1840,11 @@ BindAlgoBranchNB::BindAlgoBranchNB(QMultiMap<ObjectId, CoreId> ec, QMap<ObjectId
     moduleThrConstr = QMap<ObjectId, double>(mt);
 }
 
-BindAlgoBranchNB::BindAlgoBranchNB(QMultiMap<ObjectId, CoreId> ec, QMap<ObjectId, CoreId> fixed, QMap<ObjectId, double> thr){
+BindAlgoBranchNB::BindAlgoBranchNB(QMultiMap<ObjectId, CoreId> ec, QMultiMap<ObjectId, QSet<ObjectId>> nT, QMap<ObjectId, CoreId> fixed, QMap<ObjectId, double> thr){
     extraConstr = QMultiMap<ObjectId, CoreId>(ec);
     fixedParts = QMap<ObjectId, CoreId> (fixed);
     moduleThrConstr = QMap<ObjectId, double>(thr);
+    notTogether = QMultiMap<ObjectId, QSet<ObjectId>> (nT);
 }
 
 myTreeNode::myTreeNode() {}

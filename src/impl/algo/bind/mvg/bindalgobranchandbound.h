@@ -8,7 +8,7 @@
 
 namespace A653 {
 
-static constexpr double MaxThroughput = 10000000; // сделать массивом для каждого модуля
+static constexpr double MaxThroughput = 10000000; // С‘С„С…С‹СЂР„в„– СЊСЂС‘С‘С€С‚СЋСЊ С„С‹  СЉСЂС†С„СЋСѓСЋ СЊСЋС„С”С‹ 
 
 //struct myTreeNode
 //{
@@ -27,8 +27,8 @@ public:
     virtual bool makeBinding(Schedule* schedule);
 
     BindAlgoBranchNB ();
-    BindAlgoBranchNB (QMultiMap<ObjectId, CoreId> ec, QMap<ObjectId, CoreId> fixed, Schedule * sched);
-    BindAlgoBranchNB (QMultiMap<ObjectId, CoreId> ec, QMap<ObjectId, CoreId> fixed, QMap<ObjectId, double> thr);
+    BindAlgoBranchNB (QMultiMap<ObjectId, CoreId> ec, QMultiMap<ObjectId, QSet<ObjectId>> notTogether, QMap<ObjectId, CoreId> fixed, Schedule * sched);
+    BindAlgoBranchNB (QMultiMap<ObjectId, CoreId> ec, QMultiMap<ObjectId, QSet<ObjectId>> notTogether, QMap<ObjectId, CoreId> fixed, QMap<ObjectId, double> thr);
     QList<myTreeNode> mOpt; // optimal solution
     bool fail = false;
 
@@ -43,6 +43,7 @@ private:
     QMultiMap<ObjectId, CoreId> extraConstr;
     QMap<ObjectId, CoreId> fixedParts;
     QMap<ObjectId, double> moduleThrConstr;
+    QMultiMap<ObjectId, QSet<ObjectId>> notTogether;
 };
 
 } // namespace A653

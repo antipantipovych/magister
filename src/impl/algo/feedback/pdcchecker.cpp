@@ -106,7 +106,7 @@ void countMesConstr(const QMap<CoreId, QList<double>> &coreProblemDur, const QMa
         QList<double> durs = coreProblemDur.find(c).value();
         for (int i = 0; i < durs.size(); i++){
 
-            //по-хорошему: это должен быть список АЙДИ
+            //ГЇГ®-ГµГ®ДџГ®ГёГҐГ¬Гі: Д±ГІГ® Г¤Г®Г«Г¦ГҐГ­ ГЎГ»ГІГј Г±ГЇГЁГ±Г®ГЄ ГЂГ‰Г„Г€
             QList<ObjectId> taskLeft = findTaskBySDI(taskCore, leftSDI, c, ints.at(i).first);
             QList<ObjectId> taskRight = findTaskBySDI(taskCore, rightSDI, c, ints.at(i).second);
             QList<Message*> mLeft;
@@ -177,8 +177,8 @@ void countMesConstr(const QMap<CoreId, QList<double>> &coreProblemDur, const QMa
                 a = delta;
             }
 
-//в  mesExtraConstr кладется число, на которое необходимо уменьшить текщую длительность сообщения
-//всатвить проверку, текущая длительность сообщения > подсчитанное ограничение (иначе все бессмысленно)
+//Гў  mesExtraConstr ГЄГ«Г Г¤ГҐГІГ±Гї Г·ГЁГ±Г«Г®, Г­Г  ГЄГ®ГІГ®ДџГ®ГҐ Г­ГҐГ®ГЎГµГ®Г¤ГЁГ¬Г® ГіГ¬ГҐГ­ГјГёГЁГІГј ГІГҐГЄГ№ГіЕџ Г¤Г«ГЁГІГҐГ«ГјГ­Г®Г±ГІГј Г±Г®Г®ГЎГ№ГҐГ­ГЁГї
+//ГўГ±Г ГІГўГЁГІГј ГЇДџГ®ГўГҐДџГЄГі, ГІГҐГЄГіГ№Г Гї Г¤Г«ГЁГІГҐГ«ГјГ­Г®Г±ГІГј Г±Г®Г®ГЎГ№ГҐГ­ГЁГї > ГЇГ®Г¤Г±Г·ГЁГІГ Г­Г­Г®ГҐ Г®ГЈДџГ Г­ГЁГ·ГҐГ­ГЁГҐ (ГЁГ­Г Г·ГҐ ГўГ±ГҐ ГЎГҐГ±Г±Г¬Г»Г±Г«ГҐГ­Г­Г®)
             foreach(Message* mr, mRight){
                 foreach (Message* ml, mLeft){
                     if (!mesExtraConstr.contains(mr->id()) && !mesExtraConstr.contains(ml->id())){
@@ -322,10 +322,10 @@ void countMesConstr(const QMap<CoreId, QList<double>> &coreProblemDur, const QMa
     }
 }
 
-//воозвращать список разделов не вмещающихся в свои СДИ и список проблемных интервалов????
-// onlycheck = true - когда идет проверка в процессе МВГ, как только нашли проблему- сразу запрещаем этораспределение
+//РІРѕРѕР·РІСЂР°С‰Р°С‚СЊ СЃРїРёСЃРѕРє СЂР°Р·РґРµР»РѕРІ РЅРµ РІРјРµС‰Р°СЋС‰РёС…СЃВ¤ РІ СЃРІРѕРё вЂ”Ж’В» Рё СЃРїРёСЃРѕРє РїСЂРѕР±Р»РµРјРЅС‹С… РёРЅС‚РµСЂРІР°Р»РѕРІ????
+// onlycheck = true - РєРѕРіРґР° РёРґРµС‚ РїСЂРѕРІРµСЂРєР° РІ РїСЂРѕС†РµСЃСЃРµ РњР’Р“, РєР°Рє С‚РѕР»СЊРєРѕ РЅР°С€Р»Рё РїСЂРѕР±Р»РµРјСѓ- СЃСЂР°Р·Сѓ Р·Р°РїСЂРµС‰Р°РµРј СЌС‚РѕСЂР°СЃРїСЂРµРґРµР»РµРЅРёРµ
 bool PDCChecker::checkPDC(QMap <ObjectId, double> &messageDur, const QList<myTreeNode> &myList, ScheduleData *data, bool onlyCheck,
-                  QMultiMap<ObjectId,CoreId> &partsPDC /*пустой в начале- его только возвращаем*/, QMap<ObjectId,CoreId> &fixedParts,
+                  QMultiMap<ObjectId,CoreId> &partsPDC /*ГЇГіГ±ГІГ®Г© Гў Г­Г Г·Г Г«ГҐ- ГҐГЈГ® ГІГ®Г«ГјГЄГ® ГўГ®Г§ГўДџГ Г№Г ГҐГ¬*/, QMap<ObjectId,CoreId> &fixedParts,
                   QMap<ObjectId, double> &mesConstr){
     QMap <ObjectId, CoreId> taskCore;
     QMap <ObjectId, ObjectId> taskModule;
@@ -335,7 +335,7 @@ bool PDCChecker::checkPDC(QMap <ObjectId, double> &messageDur, const QList<myTre
     QMap<ObjectId, Message*> taskMesRight;
 
     bool isProblem = false;
-    //нужно поменять - сделать QMap<TaskId,QList<pair<double,double>>> - для каждой задачи, чей период меньше I нужно считать несколько раз
+    //РЅСѓР¶РЅРѕ РїРѕРјРµРЅСЏС‚СЊ - СЃРґРµР»Р°С‚СЊ QMap>> - РґР»СЏ РєР°Р¶РґРѕР№ Р·Р°РґР°С‡Рё, С‡РµР№ РїРµСЂРёРѕРґ РјРµРЅСЊС€Рµ I РЅСѓР¶РЅРѕ СЃС‡РёС‚Р°С‚СЊ РЅРµСЃРєРѕР»СЊРєРѕ СЂР°Р·
 
     QMap <ObjectId, QList<double>> leftSDI;
     QMap <ObjectId, QList<double>> rightSDI;
@@ -420,7 +420,7 @@ bool PDCChecker::checkPDC(QMap <ObjectId, double> &messageDur, const QList<myTre
         qDebug()<<"SDI failure\n";
         return false;
     }
-    //найдем проблемные интервалы для всех ядер
+    //РЅР°Р№РґРµРј РїСЂРѕР±Р»РµРјРЅС‹Рµ РёРЅС‚РµСЂРІР°Р»С‹ РґР»В¤ РІСЃРµС… В¤РґРµСЂ
     for (int i = 0; i < cores.size(); i++){
         QList<double> time = times.find(cores.at(i)).value().toSet().toList();
         qSort(time);
@@ -433,8 +433,8 @@ bool PDCChecker::checkPDC(QMap <ObjectId, double> &messageDur, const QList<myTre
                 double sum = 0.0;
                 for (int t = 0; t < tasks.size(); t++){
                     ObjectId taskId = tasks.at(t)->id();
-                    // если работа приналлежит данному ядру и ее СДИ лежит внутри рассматриваемого интервала
-                    //нужно менять проверку - учитывать несколько одинаковых работ
+                    // РµСЃР»Рё СЂР°Р±РѕС‚Р° РїСЂРёРЅР°Р»Р»РµР¶РёС‚ РґР°РЅРЅРѕРјСѓ В¤РґСЂСѓ Рё РµРµ вЂ”Ж’В» Р»РµР¶РёС‚ РІРЅСѓС‚СЂРё СЂР°СЃСЃРјР°С‚СЂРёРІР°РµРјРѕРіРѕ РёРЅС‚РµСЂРІР°Р»Р°
+                    //РЅСѓР¶РЅРѕ РјРµРЅВ¤С‚СЊ РїСЂРѕРІРµСЂРєСѓ - СѓС‡РёС‚С‹РІР°С‚СЊ РЅРµСЃРєРѕР»СЊРєРѕ РѕРґРёРЅР°РєРѕРІС‹С… СЂР°Р±РѕС‚
                     int count = 0;
                     if (taskCore.find(taskId).value() == cores.at(i)){
                         for (int e = 0; e < leftSDI.find(taskId).value().size(); e++){
@@ -461,7 +461,7 @@ bool PDCChecker::checkPDC(QMap <ObjectId, double> &messageDur, const QList<myTre
     }
     if (onlyCheck || !isProblem) return true;
 
-    //считаем, насколько нужно уменьшить сообщения
+    //СЃС‡РёС‚Р°РµРј, РЅР°СЃРєРѕР»СЊРєРѕ РЅСѓР¶РЅРѕ СѓРјРµРЅСЊС€РёС‚СЊ СЃРѕРѕР±С‰РµРЅРёВ¤
 
     countMesConstr(coreProblemDur, coreProblemInt, leftSDI, rightSDI, taskMesLeft, taskMesRight, taskCore, mesConstr, messageDur);
 
@@ -486,7 +486,7 @@ bool PDCChecker::checkPDC(QMap <ObjectId, double> &messageDur, const QList<myTre
                     sum+=SDICounting::countTaskDur(curTask->id(), taskCore, data)*count;
                 }
                 if(sum >= coreProblemDur.find(cores.at(c)).value().at(i)){
-                    //добавить этот раздел в множество разделов для данного проблемного интревала
+                   //РґРѕР±Р°РІРёС‚СЊ СЌС‚РѕС‚ СЂР°Р·РґРµР» РІ РјРЅРѕР¶РµСЃС‚РІРѕ СЂР°Р·РґРµР»РѕРІ РґР»В¤ РґР°РЅРЅРѕРіРѕ РїСЂРѕР±Р»РµРјРЅРѕРіРѕ РёРЅС‚СЂРµРІР°Р»Р°
                     sp.insert(i);
                     fixedParts.insert(myList.at(p).mPart, myList.at(p).mCore);
                 }
@@ -519,7 +519,7 @@ bool PDCChecker::checkPDC(QMap <ObjectId, double> &messageDur, const QList<myTre
                 partInt.find(partInt.keys().at(o)).value().subtract(maxI);
             }
         }
-        //сделать анализ полученных списков разделов и ограничить привязку
+        //СЃРґРµР»Р°С‚СЊ Р°РЅР°Р»РёР· РїРѕР»СѓС‡РµРЅРЅС‹С… СЃРїРёСЃРєРѕРІ СЂР°Р·РґРµР»РѕРІ Рё РѕРіСЂР°РЅРёС‡РёС‚СЊ РїСЂРёРІВ¤Р·РєСѓ
 
     }
 

@@ -57,6 +57,7 @@ void XMLProcessor::create_afdx_xml (QString fileName, ScheduleData * data, const
          link.setAttribute("toType", QString::number(0));
          link.setAttribute("from",QString::number(i+1));
          link.setAttribute("to",QString::number(i+1+data->modules().size()));
+         link.setAttribute("faild", QString::number(0));
          resources.appendChild(link);
      }
 
@@ -103,7 +104,7 @@ void XMLProcessor::create_afdx_xml (QString fileName, ScheduleData * data, const
 }
 
 void XMLProcessor::get_vl_response (std::string fileName, ScheduleData * data, QMap <ObjectId, double> &messageDur, QList<Message*> &failedMes,
-                                    const QMap<ObjectId, CoreId> &taskCore){
+                                    const QMap<ObjectId, CoreId> &taskCore, QList<ObjectId> &troubleMod){
 
     QDomDocument xmlBOM;
     QFile f(QString::fromStdString(fileName));
@@ -123,6 +124,20 @@ void XMLProcessor::get_vl_response (std::string fileName, ScheduleData * data, Q
 
     QDomElement dfs = rootChild.at(2).toElement();
     QDomElement vls = rootChild.at(1).toElement();
+    QDomNodeList links = root.elementsByTagName("link");
+
+    //We are finding only 'out' links (connected to tne module)
+    //There also may be 'inner' failed links
+    for (int i = 0; i < data->modules().size(); i++){
+       for (int j = 0; j < links.size(); j++){
+           //Find the link associated with current module (assume, that there is only one link and it's from port == i+1)
+           if (links.at(j).toElement().attribute("from").toInt() == i+1){
+               if (links.at(j).toElement().attribute("failed").toInt() == 1){
+                   troubleMod.append(data->modules().at(i)->id());
+               }
+           }
+       }
+    }
 
     for (int i = 0; i < dfs.childNodes().size(); i++){
 

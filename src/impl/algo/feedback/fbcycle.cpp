@@ -111,7 +111,7 @@ namespace A653 {
     void FBCycle::execute (Schedule* schedule, QString inputFile){
         if (!logger.open(QIODevice::Append | QIODevice::Text))
         {
-            qDebug() << "Ошибка при открытии файла";
+            qDebug() << "?????? ??? ???????? ?????";
         }
 
 //        std::string filename = Project::project()->lastSavedStorage()->name.toStdString() + "VL";
@@ -121,14 +121,15 @@ namespace A653 {
         std::string afdxFile= "../../"+(inputFile.mid(3,(inputFile.length()-7))).toStdString()+"_afdx.xml";
         std::replace(afdxFile.begin(), afdxFile.end(),'\\', '/');
 
-        //делаем первичную привязку при помощи МВГ
+        //?????? ????????? ???????? ??? ?????? ???
         QMultiMap<ObjectId, CoreId> extraConstr;
+        QMultiMap<ObjectId, QSet<ObjectId>> notTogether;
         QMap<ObjectId, CoreId> fixedParts;
         QMap<ObjectId, CoreId> solution;
         QMap <ObjectId, double> mesDur;
         QList<myTreeNode> binding;
 
-        BindAlgoBranchNB mvg (extraConstr, fixedParts, schedule);
+        BindAlgoBranchNB mvg (extraConstr, notTogether, fixedParts, schedule);
         mvg.makeBinding(schedule);
 
         if(mvg.fail) {
@@ -151,34 +152,42 @@ namespace A653 {
 
         while(true){
             initFixedParts(binding, solution, fixedParts);
-            //строим более удобную структуру решения привязки: задача - ядро
+            //?????? ????? ??????? ????????? ??????? ????????: ?????? - ????
             QMap<ObjectId, CoreId> taskCore = PDCChecker::initTaskCore(binding, schedule->data()->tasks());
 
-            //считаем ограничения на максимальную длительность передачи сообщений
+            //??????? ??????????? ?? ???????????? ???????????? ???????? ?????????
             QMap<ObjectId, int> mesMaxDur;
             mesMaxDur = countMesMaxDur(schedule->data(), taskCore, mesConstr, mesDur);
 
-            //сторим виртуальные каналы
+            //?????? ??????????? ??????
             XMLProcessor::create_afdx_xml(QString::fromStdString(filename), schedule->data(), solution, mesMaxDur);
 
             std::string command = "C:/Windows/sysnative/bash.exe -c '../../AFDX_Designer/AFDX_Designer/algo/AFDX_DESIGN " + afdxFile + " a'";
             qDebug()<<command.c_str();
             system(command.c_str());
 
-            // считаем фактические длительности сообщений
+            // ??????? ??????????? ???????????? ?????????
             QList<Message*> failedMes;
+            QList<ObjectId> troubleMod;
             mesDur.clear();
-            XMLProcessor::get_vl_response(filename, schedule->data(), mesDur,  failedMes, taskCore);
+            XMLProcessor::get_vl_response(filename, schedule->data(), mesDur,  failedMes, taskCore, troubleMod);
             if (failedMes.size()!= 0){
                  logStream<<"there were FAILED VLs";
                  qDebug()<<"there were FAILED VLs";
-                 MessageFB::countMesFB(schedule->data(), failedMes, moduleThrConstr, taskCore);
-                 mesConstr.clear();
-             //TODO: при сопряжении FB нужно будет учитывать fixedParts
-                 if(extraConstr.size() == 0){
-                    fixedParts.clear();  //хотя бы так
+                 if (troubleMod.size() == 0){
+                     logStream<<"there were FAILED only INNER Links";
+                     qDebug()<<"there were FAILED only INNER Links";
+                     return;
                  }
-                 BindAlgoBranchNB mvgLocal (extraConstr, fixedParts, moduleThrConstr);
+
+                 MessageFB::countMesFB(schedule->data(), failedMes, moduleThrConstr, taskCore, troubleMod);
+                 mesConstr.clear();
+             //TODO: ??? ?????????? FB ????? ????? ????????? fixedParts
+                 if(extraConstr.size() == 0){
+                    fixedParts.clear();  //???? ?? ???
+                 }
+            //need to clear notTogether MAYBE?
+                 BindAlgoBranchNB mvgLocal (extraConstr, notTogether, fixedParts, moduleThrConstr);
                  mvgLocal.makeBinding(schedule);
                  if(mvgLocal.fail) {
                      logStream<<"mvg failed\n";
@@ -188,7 +197,7 @@ namespace A653 {
                  binding = mvgLocal.mOpt;
             }
             else{
-                //feedback с PDC на привязку
+                //feedback ? PDC ?? ????????
                 QMultiMap<ObjectId, CoreId> localExtraConstr;
                 pdcResult = PDCChecker::checkPDC(mesDur, binding, schedule->data(), false, localExtraConstr, fixedParts, mesConstr);
                 if (pdcResult) {
@@ -200,13 +209,13 @@ namespace A653 {
                     logStream<<"during the last pdcCheck no new constraints were added, but the result is unsuccessful"<<"\n"<<"Use other feedback\n";
                     qDebug()<<"during the last pdcCheck no new constraints were added, but the result is unsuccessful"<<"\n"<<"Use other feedback\n";
                     continue;
-                    //пересчет AFDX,пересчет PDC, не меняется extraConstr
-                    //особо ничего делать не надо - когда упадет AFDX - пойдет перераспределение разделов - пойдут новые циклы
+                    //???????? AFDX,???????? PDC, ?? ???????? extraConstr
+                    //????? ?????? ?????? ?? ???? - ????? ?????? AFDX - ?????? ????????????????? ???????? - ?????? ????? ?????
                 }
                 else{
                     logStream<<"pdcCheck unsuccessful, new Constr added\n";
                     qDebug()<<"pdcCheck unsuccessful, new Constr added\n";
-                    //тут тоже нужно сначала попробовать без новых ограничений прогнать изменение сообщений
+                    //??? ???? ????? ??????? ??????????? ??? ????? ??????????? ???????? ????????? ?????????
                     QMap<ObjectId, int> localMesMaxDur;
                     localMesMaxDur = countMesMaxDur(schedule->data(), taskCore, mesConstr, mesDur);
 
@@ -216,33 +225,39 @@ namespace A653 {
                     qDebug()<<command.c_str();
                     system(command.c_str());
 
-                    // считаем фактические длительности сообщений
+                    // ??????? ??????????? ???????????? ?????????
                     mesDur.clear();
-                    XMLProcessor::get_vl_response(filename, schedule->data(), mesDur,  failedMes, taskCore);
+                    XMLProcessor::get_vl_response(filename, schedule->data(), mesDur,  failedMes, taskCore, troubleMod);
                     if (failedMes.size()!= 0){
                          logStream<<"there were FAILED VLs";
                          qDebug()<<"there were FAILED VLs";
+                         if (troubleMod.size() == 0){
+                             logStream<<"there were FAILED only INNER Links";
+                             qDebug()<<"there were FAILED only INNER Links";
+                             return;
+                         }
                          extraConstr.unite(localExtraConstr);
                          //break;
                          //TODO
-                         //feedback на привязку: что воообще для этого нужно
+                         //feedback ?? ????????: ??? ??????? ??? ????? ?????
                     }
                     else{
                     mesConstr.clear();
                     QMultiMap<ObjectId, CoreId> newlocalExtraConstr;
                     pdcResult = PDCChecker::checkPDC(mesDur, binding, schedule->data(), false, newlocalExtraConstr, solution, mesConstr);
                     if(pdcResult){
-                        //если было достаточно поменять длительности сообщений-строим расписание окон
+                        //???? ???? ?????????? ???????? ???????????? ?????????-?????? ?????????? ????
                         break;
                     }
                     else{
-                        //иначе пробуем полученные на PDC "до" доп ограничения
+                        //????? ??????? ?????????? ?? PDC "??" ??? ???????????
                         extraConstr.unite(localExtraConstr);
                     }}
                 }
 
                 mesConstr.clear();
-                BindAlgoBranchNB mvgLocal (extraConstr, fixedParts, schedule);
+         //need to clear notTogether MAYBE?
+                BindAlgoBranchNB mvgLocal (extraConstr, notTogether, fixedParts, schedule);
                 mvgLocal.makeBinding(schedule);
                 if(mvgLocal.fail) {
                     logStream<<"mvg failed\n";
@@ -253,10 +268,10 @@ namespace A653 {
             }
         }
 
-        //инициализация coreForPArt последней корректной привязкой Schedule::bindPartition
-        //по-идее после последнего распределения эти данные и так лежат в Schedule
+        //????????????? coreForPArt ????????? ?????????? ????????? Schedule::bindPartition
+        //??-???? ????? ?????????? ????????????? ??? ?????? ? ??? ????? ? Schedule
 
-        //инициализация setChannelDuration для каждого сообщения:
+        //????????????? setChannelDuration ??? ??????? ?????????:
         setMesDurations(schedule, schedule->data()->messages(), mesDur);
         ProjectImpl::algorithms()->schedAlgo()->makeSchedule(schedule);
 
