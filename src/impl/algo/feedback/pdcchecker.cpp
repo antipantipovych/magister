@@ -15,6 +15,9 @@
 
 namespace A653 {
 
+QFile loggerSDI("SDI_log.txt");
+QTextStream sdiStream(&loggerSDI);
+
 QMap<ObjectId, CoreId> PDCChecker::initTaskCore (const QList<myTreeNode> &myList, const  QList<Task*> tasks){
     QMap<ObjectId, CoreId> taskCore;
     for (int i = 0; i < tasks.length(); i++){
@@ -98,10 +101,9 @@ void countMesConstr(const QMap<CoreId, QList<double>> &coreProblemDur, const QMa
                      const QMap <ObjectId, QList<double>> &leftSDI, const QMap <ObjectId, QList<double>> & rightSDI,
                      const QMap<ObjectId, Message*> &taskMesLeft, const QMap<ObjectId, Message*> &taskMesRight,
                      const QMap <ObjectId, CoreId> &taskCore, QMap<ObjectId, double> &mesExtraConstr,
-                     const QMap <ObjectId, double> &messageDur, const QMap<ObjectId, double> &minChainMes,
+                     const QMap <ObjectId, double> &messageDur,
                      const QMap<ObjectId, double> &maxMesDur){
 
-    QMap<ObjectId, double> mesDelta;
 
     foreach(CoreId c, coreProblemDur.keys()){
         QList<std::pair<double, double>> ints = coreProblemInt.find(c).value();
@@ -181,210 +183,31 @@ void countMesConstr(const QMap<CoreId, QList<double>> &coreProblemDur, const QMa
                                                                                  delta*(messageDur.find(pairsMes.at(maxPair).at(k)->id()).value()/sumOfDurs)));
             }
         }
-
-//            double dl = countNearestLeft(c, ints.at(i).first, taskCore, leftSDI);
-//            double dr = countNearestRight(c, ints.at(i).second, taskCore, rightSDI);
-
-//            foreach(ObjectId t, taskLeft){
-//                if(isLeft){
-//                    if(mesDelta.contains(t)){
-//                        mesDelta.insert(t,std::min(mesDelta.find(t).value(), dl));
-//                    }
-//                    else {
-//                        mesDelta.insert(t, dl);
-//                    }
-//                }
-//            }
-
-//            foreach(ObjectId t, taskRight){
-//                if(isRight){
-//                    if(mesDelta.contains(t)){
-//                        mesDelta.insert(t, std::min(mesDelta.find(t).value(), dr));
-//                    }
-//                    else {
-//                        mesDelta.insert(t, dr);
-//                    }
-//                }
-//            }
-
-//            double a = -1;
-//            double b = -1;
-
-//            if(isRight && isLeft){
-//                if(abs(dl+dr - delta) > 0.000001){
-//                    if( (abs(dl -delta/2) > 0.000001) && (abs(dr -delta/2) > 0.000001)){
-//                        a = delta/2;
-//                        b = delta/2;
-//                    }
-//                    else if (abs(dl -delta/2) < 0.000001){
-//                        a = dl;
-//                        b = delta - dl;
-//                    }
-//                    else {
-//                        a = delta - dr;
-//                        b = dr;
-//                    }
-//                }
-//            }
-//            else if (isRight && (abs(dr - delta) > 0.000001)){
-//                b = delta;
-//            }
-//            else if (isLeft && (abs(dl - delta) > 0.000001)){
-//                a = delta;
-//            }
-
-//â  mesExtraConstr êëàäåòñÿ ÷èñëî, íà êîòîğîå íåîáõîäèìî óìåíüøèòü òåêùóş äëèòåëüíîñòü ñîîáùåíèÿ
-//âñàòâèòü ïğîâåğêó, òåêóùàÿ äëèòåëüíîñòü ñîîáùåíèÿ > ïîäñ÷èòàííîå îãğàíè÷åíèå (èíà÷å âñå áåññìûñëåííî)
-//            foreach(Message* mr, mRight){
-//                foreach (Message* ml, mLeft){
-//                    if (!mesExtraConstr.contains(mr->id()) && !mesExtraConstr.contains(ml->id())){
-//                        if(isRight && (messageDur.find(mr->id()).value()- b >= 0.000001)){
-//                            mesExtraConstr.insert(mr->id(), b);
-//                        }
-//                        if(isLeft && (messageDur.find(ml->id()).value()- a >= 0.000001)){
-//                            mesExtraConstr.insert(ml->id(), a);
-//                        }
-//                    }
-//                    else if (mesExtraConstr.contains(mr->id())){
-//                        double curConstr = mesExtraConstr.find(mr->id()).value();
-//                        if (abs(curConstr - dr) > 0.000001){
-//                            if(isRight && (messageDur.find(mr->id()).value()- b >= 0.000001)){
-//                                mesExtraConstr.insert(mr->id(), b);
-//                            }
-//                            if(isLeft && (messageDur.find(ml->id()).value()- a >= 0.000001)){
-//                                mesExtraConstr.insert(ml->id(), a);
-//                            }
-//                        }
-//                        else if (abs(curConstr - dr) < 0.000001 && abs(curConstr - b) > 0.000001){
-//                            if(isLeft && (messageDur.find(ml->id()).value()- (delta - curConstr) >= 0.000001)){
-//                                mesExtraConstr.insert(ml->id(), delta - curConstr);
-//                            }
-//                        }
-//                        else if (abs(curConstr - b) < 0.000001){
-//                            if (abs(mesDelta.find(mr->id()).value() - b) > 0.000001){
-//                                if(isRight && (messageDur.find(mr->id()).value()- b >= 0.000001)){
-//                                    mesExtraConstr.insert(mr->id(), b);
-//                                }
-//                                if(isLeft && (messageDur.find(ml->id()).value()- a >= 0.000001)){
-//                                    mesExtraConstr.insert(ml->id(), a);
-//                                }
-//                            }
-//                            else {
-//                                if(isRight && (messageDur.find(mr->id()).value()- mesDelta.find(mr->id()).value() >= 0.000001)){
-//                                    mesExtraConstr.insert(mr->id(), mesDelta.find(mr->id()).value());
-//                                }
-//                                if(isLeft && (messageDur.find(ml->id()).value()- std::min(delta - mesDelta.find(mr->id()).value(), dl) >= 0.000001)){
-//                                    mesExtraConstr.insert(ml->id(), std::min(delta - mesDelta.find(mr->id()).value(), dl));
-//                                }
-//                            }
-//                        }
-//                    }
-//                    else if (mesExtraConstr.contains(ml->id())){
-//                        double curConstr = mesExtraConstr.find(ml->id()).value();
-//                        if (abs(curConstr - dl) > 0.000001){
-//                            if(isRight && (messageDur.find(mr->id()).value()- b >= 0.000001)){
-//                                mesExtraConstr.insert(mr->id(), b);
-//                            }
-//                            if(isLeft && (messageDur.find(ml->id()).value()- a >= 0.000001)){
-//                                mesExtraConstr.insert(ml->id(), a);
-//                            }
-//                        }
-//                        else if (abs(curConstr - dl) < 0.000001 && abs(curConstr - a) > 0.000001){
-//                            if(isRight  && (messageDur.find(mr->id()).value()- (delta - curConstr) >= 0.000001)){
-//                                mesExtraConstr.insert(mr->id(), delta - curConstr);
-//                            }
-//                        }
-//                        else if ( abs(curConstr - a) < 0.000001){
-//                            if (abs(mesDelta.find(ml->id()).value() - a) > 0.000001){
-//                                if(isRight && (messageDur.find(mr->id()).value()- b >= 0.000001)){
-//                                    mesExtraConstr.insert(mr->id(), b);
-//                                }
-//                                if(isLeft && (messageDur.find(ml->id()).value()- a >= 0.000001)){
-//                                    mesExtraConstr.insert(ml->id(), a);
-//                                }
-//                            }
-//                            else {
-//                                if(isLeft && (messageDur.find(ml->id()).value()- mesDelta.find(ml->id()).value() >= 0.000001)){
-//                                    mesExtraConstr.insert(ml->id(), mesDelta.find(ml->id()).value());
-//                                }
-//                                if(isRight && (messageDur.find(mr->id()).value()- std::min(delta - mesDelta.find(ml->id()).value(), dr) >= 0.000001)){
-//                                    mesExtraConstr.insert(mr->id(), std::min(delta - mesDelta.find(ml->id()).value(), dr));
-//                                }
-//                            }
-//                        }
-//                    }
-//                    else{
-//                        if(isLeft && (messageDur.find(ml->id()).value()- mesDelta.find(ml->id()).value() >= 0.000001)){
-//                            mesExtraConstr.insert(ml->id(), mesDelta.find(ml->id()).value());
-//                        }
-//                        if(isRight && (messageDur.find(mr->id()).value()- mesDelta.find(mr->id()).value() >= 0.000001)){
-//                            mesExtraConstr.insert(mr->id(), mesDelta.find(mr->id()).value());
-//                        }
-//                    }
-//                }
-//            }
-//            if(isRight && !isLeft){
-//                foreach(Message* mr, mRight){
-//                    if (!mesExtraConstr.contains(mr->id()) && (messageDur.find(mr->id()).value()- b >= 0.000001)){
-//                        mesExtraConstr.insert(mr->id(), b);
-//                    }
-//                    else if (mesExtraConstr.contains(mr->id())){
-//                        double curConstr = mesExtraConstr.find(mr->id()).value();
-//                        if ((abs(curConstr - dr) > 0.000001) && (messageDur.find(mr->id()).value()- b >= 0.000001)){
-//                            mesExtraConstr.insert(mr->id(), b);
-//                        }
-//                        else if (abs(curConstr - b) < 0.000001){
-//                            if ((abs(mesDelta.find(mr->id()).value() - b) > 0.000001) &&(messageDur.find(mr->id()).value()- b >= 0.000001)){
-//                                mesExtraConstr.insert(mr->id(), b);
-//                            }
-//                            else if (messageDur.find(mr->id()).value()- mesDelta.find(mr->id()).value() >= 0.000001){
-//                                mesExtraConstr.insert(mr->id(), mesDelta.find(mr->id()).value());
-
-//                            }
-//                        }
-//                    }
-
-//                    else if(messageDur.find(mr->id()).value()- mesDelta.find(mr->id()).value() >= 0.000001){
-//                        mesExtraConstr.insert(mr->id(), mesDelta.find(mr->id()).value());
-//                    }
-//                }
-//            }
-//            if(isLeft && !isRight){
-//                foreach (Message* ml, mLeft){
-//                    if (!mesExtraConstr.contains(ml->id()) && (messageDur.find(ml->id()).value()- a >= 0.000001)){
-//                        mesExtraConstr.insert(ml->id(), a);
-//                    }
-//                    else if (mesExtraConstr.contains(ml->id())){
-//                        double curConstr = mesExtraConstr.find(ml->id()).value();
-//                        if (abs(curConstr - dl) > 0.000001 && (messageDur.find(ml->id()).value()- a >= 0.000001)){
-//                            mesExtraConstr.insert(ml->id(), a);
-//                        }
-//                        else if ( abs(curConstr - a) < 0.000001){
-//                            if ((abs(mesDelta.find(ml->id()).value() - a) > 0.000001) && (messageDur.find(ml->id()).value()- a >= 0.000001)){
-//                                mesExtraConstr.insert(ml->id(), a);
-//                            }
-//                            else if(messageDur.find(ml->id()).value()- mesDelta.find(ml->id()).value() >= 0.000001){
-//                                mesExtraConstr.insert(ml->id(), mesDelta.find(ml->id()).value());
-//                            }
-//                        }
-//                    }
-//                    else if(messageDur.find(ml->id()).value()- mesDelta.find(ml->id()).value() >= 0.000001){
-//                            mesExtraConstr.insert(ml->id(), mesDelta.find(ml->id()).value());
-//                    }
-//                }
-//            }
-
-//        }
     }
+}
+
+void writeTaskSDIs(const QMap <ObjectId, QList<double>> &leftSDI, const QMap <ObjectId, QList<double>> &rightSDI, const QList<Task*> &tasks ){
+    if (!loggerSDI.open(QIODevice::Append | QIODevice::Text))
+    {
+        qDebug() << "?????? ??? ???????? ?????";
+    }
+
+    for (int i = 0; i < tasks.size(); i++){
+        sdiStream<<"Task (first job) "<< QString::fromStdString(std::to_string((tasks.at(i)->id()).getId()))<<" : (leftSDI ; rightSDI) "<< leftSDI.find(tasks.at(i)->id()).value().first()
+                <<" ; "<< rightSDI.find(tasks.at(i)->id()).value().first()<<"\n";
+        qDebug()<<"Task (first job) "<< QString::fromStdString(std::to_string((tasks.at(i)->id()).getId()))<<" : (leftSDI ; rightSDI) "<< leftSDI.find(tasks.at(i)->id()).value().first()
+               <<" ; "<< rightSDI.find(tasks.at(i)->id()).value().first()<<"\n";
+    }
+
+
 }
 
 //воозвращать список разделов не вмещающихс¤ в свои —ƒ» и список проблемных интервалов????
 // onlycheck = true - когда идет проверка в процессе МВГ, как только нашли проблему- сразу запрещаем этораспределение
 bool PDCChecker::checkPDC(QMap <ObjectId, double> &messageDur, const QList<myTreeNode> &myList, ScheduleData *data, bool onlyCheck,
-                  QMultiMap<ObjectId, QSet<ObjectId>> &partsPDC /*ïóñòîé â íà÷àëå- åãî òîëüêî âîçâğàùàåì*/, QMap<ObjectId,CoreId> &fixedParts,
-                  QMap<ObjectId, double> &mesConstr, const QMap<ObjectId, double> &minChainMes, const QMap<ObjectId, double> &maxMesDur){
+                  QMultiMap<ObjectId, QSet<ObjectId>> &partsPDC /*ïóñòîé â íà÷àëå- åãî òîëüêî âîçâğàùàåì*/, QMap<ObjectId, double> &mesConstr,
+                         const QMap<ObjectId, double> &maxMesDur){
     QMap <ObjectId, CoreId> taskCore;
-    QMap <ObjectId, ObjectId> taskModule;
     QMap <ObjectId, QList<int>> partTasks;
     QMap<ObjectId, CoreId> partsSDI;
     QMap<ObjectId, Message*> taskMesLeft;
@@ -448,6 +271,10 @@ bool PDCChecker::checkPDC(QMap <ObjectId, double> &messageDur, const QList<myTre
     for (int i = 0; i < endTasks.size(); i++){
         SDICounting::countRightSDI(endTasks.at(i), messages, messageDur, rightSDI, taskCore, taskPeriod.find(endTasks.at(i)).value(),
                                    data, taskMesRight);
+    }
+
+    if(!onlyCheck){
+        writeTaskSDIs(leftSDI,rightSDI,tasks);
     }
 
     //times = qSort((leftSDI.values().toSet()+rightSDI.values().toSet()).toList());
@@ -519,7 +346,7 @@ bool PDCChecker::checkPDC(QMap <ObjectId, double> &messageDur, const QList<myTre
 
     //считаем, насколько нужно уменьшить сообщени¤
 
-    countMesConstr(coreProblemDur, coreProblemInt, leftSDI, rightSDI, taskMesLeft, taskMesRight, taskCore, mesConstr, messageDur, minChainMes, maxMesDur);
+    countMesConstr(coreProblemDur, coreProblemInt, leftSDI, rightSDI, taskMesLeft, taskMesRight, taskCore, mesConstr, messageDur, maxMesDur);
 
     for(int c = 0; c < cores.size(); c++){
         //partition - set of problem intervals with it

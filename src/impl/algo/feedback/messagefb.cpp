@@ -11,7 +11,6 @@ void MessageFB::countMesFB(ScheduleData* data, const QList<Message*> &failedMes,
     QList<Message*> messages = data->messages();
     QMap<ObjectId,double> curThr;
     QMap<ObjectId,bool> troubleMod;
-    QMap<ObjectId, double> minMes;
 
     foreach(Module* m, data->modules()){
         curThr.insert(m->id(),0);

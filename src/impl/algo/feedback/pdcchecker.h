@@ -24,8 +24,8 @@ class PDCChecker
 public:
     QMap<ObjectId,CoreId> partsConstr;
     static bool checkPDC (QMap <ObjectId, double> &messageDur, const QList<myTreeNode> &myList, ScheduleData *data, bool onlyCheck,
-                           QMultiMap<ObjectId, QSet<ObjectId>> &partsSDI /*īķņōîé â íā÷āëå- åãî ōîëüęî âîįâđāųāåė*/, QMap<ObjectId,CoreId> &fixedParts,
-                          QMap<ObjectId, double> &mesConstr,const QMap<ObjectId, double> &minChainMes,const QMap<ObjectId, double> &mesMaxDur);
+                           QMultiMap<ObjectId, QSet<ObjectId>> &partsSDI /*īķņōîé â íā÷āëå- åãî ōîëüęî âîįâđāųāåė*/,
+                          QMap<ObjectId, double> &mesConstr,const QMap<ObjectId, double> &mesMaxDur);
 
     static QMap<ObjectId, CoreId> initTaskCore (const QList<myTreeNode> &myList, const  QList<Task*> tasks);
 

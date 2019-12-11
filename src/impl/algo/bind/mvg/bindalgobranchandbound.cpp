@@ -499,7 +499,10 @@ double lowerBoundCounting(QList<myTreeNode> &lowerSolution, double &lowerBound,c
                         }
                         ppIter++;
                      }
-                     if(notYetBounded) continue;
+                     if(notYetBounded) {
+                         ne++;
+                         continue;
+                      }
                      int prohibitedCount = 0;
                      for (int sol = 0; sol < lowerSolution.size(); sol++){
                          if(lowerSolution.at(sol).mCore == cor && prohibitedParts.contains(lowerSolution.at(sol).mPart)){
@@ -591,7 +594,7 @@ double lowerBoundCounting(QList<myTreeNode> &lowerSolution, double &lowerBound,c
      QMap<ObjectId, double> mesConstr;
      QMap<ObjectId, double> mesMaxDur;
      QMap<ObjectId, double> minChainMessage;
-    if (PDCChecker::checkPDC(mesDur, lowerSolution, shed->data(), true, parts, fixedParts, mesConstr, minChainMessage, mesMaxDur )){
+    if (PDCChecker::checkPDC(mesDur, lowerSolution, shed->data(), true, parts, mesConstr, mesMaxDur )){
         return lowerBound;
     }
 return 0;
@@ -1213,7 +1216,7 @@ double UpperBoundCountingUpdate(const QList<myTreeNode> &currentSolution,const O
              QMap<ObjectId, double> mesConstr;
              QMap<ObjectId, double> mesMaxDur;
              QMap<ObjectId, double> minChainMessage;
-             if((curDoubleSol>=optDoubleSol) && (PDCChecker::checkPDC(mesDur, currentBranch, shed->data(), true, parts, fixedParts, mesConstr, minChainMessage, mesMaxDur))) {
+             if((curDoubleSol>=optDoubleSol) && (PDCChecker::checkPDC(mesDur, currentBranch, shed->data(), true, parts, mesConstr, mesMaxDur))) {
                  optDoubleSol=curDoubleSol;
                  optSolution.clear();
                  foreach (myTreeNode t, currentBranch) {

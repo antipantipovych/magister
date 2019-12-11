@@ -103,6 +103,14 @@ void XMLProcessor::create_afdx_xml (QString fileName, ScheduleData * data, const
      }
 }
 
+void writeMesDur(const QMap <ObjectId, double> &messageDur,ScheduleData * data){
+
+    for (int i = 0; i < messageDur.keys().size(); i++){
+       qDebug()<<"Message "<< QString::fromStdString(std::to_string((messageDur.keys().at(i).getId())))<<" duration : "
+              << messageDur.find(messageDur.keys().at(i)).value()<<"\n";
+    }
+}
+
 void XMLProcessor::get_vl_response (std::string fileName, ScheduleData * data, QMap <ObjectId, double> &messageDur, QList<Message*> &failedMes,
                                     const QMap<ObjectId, CoreId> &taskCore, QList<ObjectId> &troubleMod){
 
@@ -169,6 +177,7 @@ void XMLProcessor::get_vl_response (std::string fileName, ScheduleData * data, Q
             failedMes.append(data->messages().at(i));
         }
     }
+    writeMesDur(messageDur, data);
 }
 
 
@@ -208,9 +217,16 @@ void XMLProcessor::create_afdx_xml_triangle (QString fileName, ScheduleData * da
          sw.setAttribute("y", QString::number(10));
          portsNumber++;
          QString swPorts = QString::number(portsNumber);
-         for (int i = j* ceil(data->modules().size()/3); i < (j+1)* ceil(data->modules().size()/3); i++){
+         for (int i = j*(data->modules().size()/3)+1; i < (j+1)*(data->modules().size()/3); i++){
              portsNumber++;
              swPorts+=","+QString::number(portsNumber);
+         }
+         if(j == 2){
+             for (int i = (j+1)*(data->modules().size()/3); i < data->modules().size(); i++){
+                 portsNumber++;
+                 swPorts+=","+QString::number(portsNumber);
+
+             }
          }
          sw.setAttribute("ports", swPorts);
          resources.appendChild(sw);
@@ -221,8 +237,16 @@ void XMLProcessor::create_afdx_xml_triangle (QString fileName, ScheduleData * da
      for(int i = 0; i < switches.size(); i++){
          portsNumber++;
          QString p = switches.at(i).toElement().attribute("ports")+","+QString::number(portsNumber);
+         if(i!=0){
+             portsNumber++;
+             p += ","+QString::number(portsNumber);
+         }
          switches.at(i).toElement().setAttribute("ports",p);
      }
+
+     portsNumber++;
+     QString p = switches.at(0).toElement().attribute("ports")+","+QString::number(portsNumber);
+     switches.at(0).toElement().setAttribute("ports",p);
 
      for (int i = 0; i < data->modules().size(); i++){
          QDomElement link = doc.createElement("link");
@@ -236,7 +260,7 @@ void XMLProcessor::create_afdx_xml_triangle (QString fileName, ScheduleData * da
      }
 
      //make a triangle
-     for(int i = data->modules().size(); i < portsNumber-1; i++){
+     for(int i = (data->modules().size())*2+1; i < portsNumber; i++){
          QDomElement link = doc.createElement("link");
          link.setAttribute("capacity", CAPACITY);
          link.setAttribute("fromType", QString::number(0));
@@ -245,16 +269,8 @@ void XMLProcessor::create_afdx_xml_triangle (QString fileName, ScheduleData * da
          link.setAttribute("to",QString::number(i+1));
          link.setAttribute("faild", QString::number(0));
          resources.appendChild(link);
+         i++;
      }
-
-     QDomElement link = doc.createElement("link");
-     link.setAttribute("capacity", CAPACITY);
-     link.setAttribute("fromType", QString::number(0));
-     link.setAttribute("toType", QString::number(0));
-     link.setAttribute("from",QString::number(portsNumber));
-     link.setAttribute("to",QString::number(data->modules().size()));
-     link.setAttribute("faild", QString::number(0));
-     resources.appendChild(link);
 
      QMap<ObjectId, int> partNum;
 

@@ -86,7 +86,6 @@ namespace A653 {
                                         QMap<ObjectId, double> &minChainMessage){
         QMap <ObjectId, double> d;
         QList<Message*> mes = data->messages();
-        QList<Task*> tasks = data->tasks();
         QList<Task*> startTasks = data->tasks();
 
         foreach (Message* m, mes){
@@ -159,7 +158,7 @@ namespace A653 {
         binding=mvg.mOpt;
 
         bool pdcResult = true;
-
+        bool pdc_vl_mvg = false;
 
         QMap<ObjectId, double> mesConstr;
 
@@ -169,17 +168,19 @@ namespace A653 {
         }
 
         while(true){
-            initFixedParts(binding, solution, fixedParts);
+//We do not need fixed parts more
+//            initFixedParts(binding, solution, fixedParts);
             //?????? ????? ??????? ????????? ??????? ????????: ?????? - ????
             QMap<ObjectId, CoreId> taskCore = PDCChecker::initTaskCore(binding, schedule->data()->tasks());
 
             //??????? ??????????? ?? ???????????? ???????????? ???????? ?????????
             QMap<ObjectId, double> mesMaxDur;
             QMap<ObjectId, double> minChainMessage;
+            mesConstr.clear();
             mesMaxDur = countMesMaxDur(schedule->data(), taskCore, mesConstr, mesDur, minChainMessage);
 
             //?????? ??????????? ??????
-            XMLProcessor::create_afdx_xml(QString::fromStdString(filename), schedule->data(), solution, mesMaxDur);
+            XMLProcessor::create_afdx_xml_triangle(QString::fromStdString(filename), schedule->data(), solution, mesMaxDur);
 
             std::string command = "C:/Windows/sysnative/bash.exe -c '../../AFDX_Designer/AFDX_Designer/algo/AFDX_DESIGN " + afdxFile + " a'";
             qDebug()<<command.c_str();
@@ -199,13 +200,13 @@ namespace A653 {
                      return;
                  }
 
-                 MessageFB::countMesFB(schedule->data(), failedMes, moduleThrConstr, taskCore, troubleMod);
-                 mesConstr.clear();
-             //TODO: ??? ?????????? FB ????? ????? ????????? fixedParts
-                 if(extraConstr.size() == 0){
-                    fixedParts.clear();  //???? ?? ???
+                 //if this branch associated with the case when we started a FB gtom the PDC - we would not rebuild the mvg to
+                 //align new AFDX conatraints
+                 if(!pdc_vl_mvg){
+                    // countMesFB - counts new moduleTHRConstr
+                    MessageFB::countMesFB(schedule->data(), failedMes, moduleThrConstr, taskCore, troubleMod);
                  }
-            //need to clear notTogether MAYBE?
+
                  BindAlgoBranchNB mvgLocal (extraConstr, notTogether, fixedParts, moduleThrConstr);
                  mvgLocal.makeBinding(schedule);
                  if(mvgLocal.fail) {
@@ -213,78 +214,83 @@ namespace A653 {
                      qDebug()<<"mvg failed\n";
                      break;
                  }
-                 binding = mvgLocal.mOpt;
+                 else{
+                    mesDur.clear();
+                    mesConstr.clear();
+                    binding = mvgLocal.mOpt;
+                    pdc_vl_mvg = false;
+                    //after this we are going to the beginning of the cycle
+                 }
             }
             else{
                 //feedback ? PDC ?? ????????
-                QMultiMap<ObjectId, QSet<ObjectId>> localExtraConstr;// == noTogether
-                pdcResult = PDCChecker::checkPDC(mesDur, binding, schedule->data(), false, localExtraConstr, fixedParts, mesConstr, minChainMessage, mesMaxDur);
+                //QMultiMap<ObjectId, QSet<ObjectId>> localNotTogether;// == noTogether
+                pdcResult = PDCChecker::checkPDC(mesDur, binding, schedule->data(), false, notTogether, mesConstr, mesMaxDur);
                 if (pdcResult) {
                     logStream<<"pdcCheck was successful\n";
                     qDebug()<<"pdcCheck was successful\n";
                     break;
                 }
-                if (!pdcResult && localExtraConstr.size() == 0){
-                    logStream<<"during the last pdcCheck no new constraints were added, but the result is unsuccessful"<<"\n"<<"Use other feedback\n";
-                    qDebug()<<"during the last pdcCheck no new constraints were added, but the result is unsuccessful"<<"\n"<<"Use other feedback\n";
-                    continue;
-                    //???????? AFDX,???????? PDC, ?? ???????? extraConstr
-                    //????? ?????? ?????? ?? ???? - ????? ?????? AFDX - ?????? ????????????????? ???????? - ?????? ????? ?????
-                }
                 else{
-                    logStream<<"pdcCheck unsuccessful, new Constr added\n";
+                   // notTogether.unite(localNotTogether);
+                   logStream<<"pdcCheck unsuccessful, new Constr added\n";
                     qDebug()<<"pdcCheck unsuccessful, new Constr added\n";
-                    //??? ???? ????? ??????? ??????????? ??? ????? ??????????? ???????? ????????? ?????????
-                    QMap<ObjectId, double> localMesMaxDur;
-                    minChainMessage.clear();
-                    localMesMaxDur = countMesMaxDur(schedule->data(), taskCore, mesConstr, mesDur, minChainMessage);
+                    pdc_vl_mvg = true;
+//                    //??? ???? ????? ??????? ??????????? ??? ????? ??????????? ???????? ????????? ?????????
+//                    QMap<ObjectId, double> localMesMaxDur;
+//                    minChainMessage.clear();
+//                    localMesMaxDur = countMesMaxDur(schedule->data(), taskCore, mesConstr, mesDur, minChainMessage);
 
-                    XMLProcessor::create_afdx_xml(QString::fromStdString(filename), schedule->data(), solution, localMesMaxDur);
+//                    XMLProcessor::create_afdx_xml_triangle(QString::fromStdString(filename), schedule->data(), solution, localMesMaxDur);
 
-                    std::string command = "C:/Windows/sysnative/bash.exe -c '../../AFDX_Designer/AFDX_Designer/algo/AFDX_DESIGN " + afdxFile + " a'";
-                    qDebug()<<command.c_str();
-                    system(command.c_str());
+//                    std::string command = "C:/Windows/sysnative/bash.exe -c '../../AFDX_Designer/AFDX_Designer/algo/AFDX_DESIGN " + afdxFile + " a'";
+//                    qDebug()<<command.c_str();
+//                    system(command.c_str());
 
-                    // ??????? ??????????? ???????????? ?????????
-                    mesDur.clear();
-                    XMLProcessor::get_vl_response(filename, schedule->data(), mesDur,  failedMes, taskCore, troubleMod);
-                    if (failedMes.size()!= 0){
-                         logStream<<"there were FAILED VLs";
-                         qDebug()<<"there were FAILED VLs";
-                         if (troubleMod.size() == 0){
-                             logStream<<"there were FAILED only INNER Links";
-                             qDebug()<<"there were FAILED only INNER Links";
-                             return;
-                         }
-    //New ToDO: delete as we have notTogether Constrs              extraConstr.unite(localExtraConstr);
-                         //break;
-                         //TODO
-                         //feedback ?? ????????: ??? ??????? ??? ????? ?????
-                    }
-                    else{
-                    mesConstr.clear();
-                    QMultiMap<ObjectId, QSet<ObjectId>> newlocalExtraConstr; // == notTogether
-                    pdcResult = PDCChecker::checkPDC(mesDur, binding, schedule->data(), false, newlocalExtraConstr, solution, mesConstr, minChainMessage, localMesMaxDur);
-                    if(pdcResult){
-                        //???? ???? ?????????? ???????? ???????????? ?????????-?????? ?????????? ????
-                        break;
-                    }
-                    else{
-                        //????? ??????? ?????????? ?? PDC "??" ??? ???????????
-  //NEW ToDO extraConstr.unite(localExtraConstr);
-                    }}
+//                    // ??????? ??????????? ???????????? ?????????
+//                    mesDur.clear();
+//                    XMLProcessor::get_vl_response(filename, schedule->data(), mesDur,  failedMes, taskCore, troubleMod);
+//                    if (failedMes.size()!= 0){
+//                         logStream<<"there were FAILED VLs";
+//                         qDebug()<<"there were FAILED VLs";
+//                         if (troubleMod.size() == 0){
+//                             logStream<<"there were FAILED only INNER Links";
+//                             qDebug()<<"there were FAILED only INNER Links";
+//                             return;
+//                         }
+//                         else{
+//                         //FB PDC -> MVG
+//                             pdc_vl_mvg = true;
+//                         }
+//                    }
+//                    else{
+//                        mesConstr.clear();
+//                        //QMultiMap<ObjectId, QSet<ObjectId>> newlocalNotTogether; // == notTogether
+//                        pdcResult = PDCChecker::checkPDC(mesDur, binding, schedule->data(), false, notTogether, mesConstr, localMesMaxDur);
+//                        if(pdcResult){
+//                            //???? ???? ?????????? ???????? ???????????? ?????????-?????? ?????????? ????
+//                            logStream<<"New PDC CHeck succesful";
+//                            qDebug()<<"New PDC CHeck succesful";
+//                            break;
+//                        }
+//                        else{
+//                            //????? ??????? ?????????? ?? PDC "??" ??? ???????????
+
+//                        }
+//                    }
                 }
 
-                mesConstr.clear();
-         //need to clear notTogether MAYBE?
-                BindAlgoBranchNB mvgLocal (extraConstr, notTogether, fixedParts, schedule);
-                mvgLocal.makeBinding(schedule);
-                if(mvgLocal.fail) {
-                    logStream<<"mvg failed\n";
-                    qDebug()<<"mvg failed\n";
-                    break;
-                }
-                binding = mvgLocal.mOpt;
+//                mesDur.clear();
+//                mesConstr.clear();
+//         //need to clear notTogether MAYBE?
+//                BindAlgoBranchNB mvgLocal (extraConstr, notTogether, fixedParts, schedule);
+//                mvgLocal.makeBinding(schedule);
+//                if(mvgLocal.fail) {
+//                    logStream<<"mvg failed\n";
+//                    qDebug()<<"mvg failed\n";
+//                    break;
+//                }
+//                binding = mvgLocal.mOpt;
             }
         }
 
